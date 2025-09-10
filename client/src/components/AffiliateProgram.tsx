@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { User, Briefcase, Crown, Check, DollarSign, Users, Headphones } from 'lucide-react'
+import { User, Briefcase, Crown, Check, DollarSign, Users, Headphones, Loader2 } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
+import { useToast } from '@/hooks/use-toast'
 
 export default function AffiliateProgram() {
   const [formData, setFormData] = useState({
@@ -62,11 +64,49 @@ export default function AffiliateProgram() {
     }
   ]
 
+  const { toast } = useToast()
+
+  const affiliateMutation = useMutation({
+    mutationFn: async (affiliateData: typeof formData) => {
+      const response = await fetch('/api/affiliates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(affiliateData),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Error al enviar la solicitud')
+      }
+      
+      return response.json()
+    },
+    onSuccess: () => {
+      toast({
+        title: "¡Solicitud enviada!",
+        description: "Nos pondremos en contacto contigo pronto para revisar tu aplicación.",
+      })
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        level: 'agente',
+        message: ''
+      })
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo enviar la solicitud. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Formulario de afiliación enviado:', formData)
-    // TODO: Remove mock functionality
-    alert('¡Solicitud enviada! Nos pondremos en contacto contigo pronto.')
+    affiliateMutation.mutate(formData)
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -203,15 +243,15 @@ export default function AffiliateProgram() {
                 </div>
 
                 <div>
-                  <Label htmlFor="message" className="text-white">Mensaje (opcional)</Label>
+                  <Label htmlFor="affiliate-message" className="text-white">Mensaje (opcional)</Label>
                   <Textarea
-                    id="message"
+                    id="affiliate-message"
                     value={formData.message}
                     onChange={(e) => handleInputChange('message', e.target.value)}
                     className="bg-gray-800/50 border-purple-500/30 text-white"
                     placeholder="Cuéntanos sobre tu experiencia en ventas o por qué quieres ser parte de LAVIE..."
                     rows={4}
-                    data-testid="textarea-message"
+                    data-testid="textarea-affiliate-message"
                   />
                 </div>
 
@@ -219,8 +259,10 @@ export default function AffiliateProgram() {
                   type="submit" 
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3"
                   data-testid="button-submit-affiliate"
+                  disabled={affiliateMutation.isPending}
                 >
-                  Enviar Solicitud
+                  {affiliateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {affiliateMutation.isPending ? 'Enviando...' : 'Enviar Solicitud'}
                 </Button>
               </form>
             </CardContent>

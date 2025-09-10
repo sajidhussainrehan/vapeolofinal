@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { MapPin, Phone, Mail, MessageCircle, Truck, CreditCard, Clock } from 'lucide-react'
+import { MapPin, Phone, Mail, MessageCircle, Truck, CreditCard, Clock, Loader2 } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
+import { useToast } from '@/hooks/use-toast'
 
 export default function ContactSection() {
   const [formData, setFormData] = useState({
@@ -13,12 +15,43 @@ export default function ContactSection() {
     message: ''
   })
 
+  const { toast } = useToast()
+
+  const contactMutation = useMutation({
+    mutationFn: async (contactData: typeof formData) => {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactData),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Error al enviar el mensaje')
+      }
+      
+      return response.json()
+    },
+    onSuccess: () => {
+      toast({
+        title: "¡Mensaje enviado!",
+        description: "Nos pondremos en contacto contigo pronto.",
+      })
+      setFormData({ name: '', email: '', message: '' })
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo enviar el mensaje. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Formulario de contacto enviado:', formData)
-    // TODO: Remove mock functionality
-    alert('¡Mensaje enviado! Nos pondremos en contacto contigo pronto.')
-    setFormData({ name: '', email: '', message: '' })
+    contactMutation.mutate(formData)
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -141,8 +174,10 @@ export default function ContactSection() {
                   type="submit" 
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold"
                   data-testid="button-submit-contact"
+                  disabled={contactMutation.isPending}
                 >
-                  Enviar mensaje
+                  {contactMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {contactMutation.isPending ? 'Enviando...' : 'Enviar mensaje'}
                 </Button>
               </form>
             </CardContent>
