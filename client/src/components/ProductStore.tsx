@@ -1,13 +1,13 @@
-import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ShoppingCart, Star } from 'lucide-react'
+import { useCart } from '@/contexts/CartContext'
 import cubeImage from '@assets/generated_images/CUBE_vape_product_image_0a8cd099.png'
 import energyImage from '@assets/generated_images/ENERGY_vape_product_image_9b09255c.png'
 
 export default function ProductStore() {
-  const [cart, setCart] = useState<string[]>([])
+  const { addToCart, getCartCount } = useCart()
 
   const products = [
     {
@@ -53,9 +53,14 @@ export default function ProductStore() {
     }
   ]
 
-  const addToCart = (productId: string) => {
-    setCart([...cart, productId])
-    console.log(`Agregado ${productId} al carrito`)
+  const handleAddToCart = (product: typeof products[0]) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      puffs: product.puffs,
+      image: product.image
+    })
   }
 
   return (
@@ -134,7 +139,7 @@ export default function ProductStore() {
 
                 <Button 
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                  onClick={() => addToCart(product.id)}
+                  onClick={() => handleAddToCart(product)}
                   data-testid={`button-add-cart-${product.id}`}
                 >
                   <ShoppingCart className="mr-2 h-4 w-4" />
@@ -146,12 +151,12 @@ export default function ProductStore() {
         </div>
 
         {/* Cart Summary */}
-        {cart.length > 0 && (
+        {getCartCount() > 0 && (
           <div className="mt-12 text-center">
             <div className="inline-flex items-center bg-purple-600/20 border border-purple-500/30 rounded-lg px-6 py-3">
               <ShoppingCart className="mr-2 h-5 w-5 text-purple-400" />
               <span className="text-white">
-                {cart.length} producto{cart.length !== 1 ? 's' : ''} en el carrito
+                {getCartCount()} producto{getCartCount() !== 1 ? 's' : ''} en el carrito
               </span>
             </div>
           </div>

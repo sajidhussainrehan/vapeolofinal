@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Menu, ShoppingCart, User, X } from 'lucide-react'
+import { useCart } from '@/contexts/CartContext'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { getCartCount, openCart } = useCart()
 
   return (
     <header className="fixed top-0 w-full z-50 bg-black/90 backdrop-blur-md border-b border-purple-500/20">
@@ -34,11 +36,19 @@ export default function Header() {
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="icon" className="relative border-purple-500/30 hover:border-purple-400 text-white hover:text-white">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="relative border-purple-500/30 hover:border-purple-400 text-white hover:text-white"
+              onClick={openCart}
+              data-testid="button-cart"
+            >
               <ShoppingCart className="h-4 w-4 text-white" />
-              <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                0
-              </span>
+              {getCartCount() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {getCartCount()}
+                </span>
+              )}
             </Button>
             
             <Button variant="outline" size="icon" className="hidden lg:flex border-purple-500/30 hover:border-purple-400 text-white hover:text-white">
