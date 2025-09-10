@@ -14,10 +14,9 @@ import {
 } from "@shared/schema";
 
 // JWT_SECRET configuration
-const JWT_SECRET = process.env.JWT_SECRET || 
-  (process.env.NODE_ENV === "development" ? "dev-secret-key" : null);
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-key";
 
-if (!JWT_SECRET) {
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
   console.error("FATAL: JWT_SECRET environment variable must be set for production");
   process.exit(1);
 }
@@ -137,6 +136,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: { 
           user: { id: user.id, username: user.username, role: user.role },
           token: `Bearer ${token}`
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Distributor login (with rate limiting)
+  app.post("/api/auth/distributor/login", loginRateLimit, async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email y contraseña son requeridos" });
+      }
+
+      const affiliate = await storage.getAffiliateByEmail(email);
+      
+      if (!affiliate) {
+        return res.status(401).json({ error: "Credenciales inválidas" });
+      }
+      
+      if (affiliate.status !== 'approved') {
+        return res.status(401).json({ error: "Tu cuenta aún no ha sido aprobada" });
+      }
+
+      if (!affiliate.password) {
+        return res.status(401).json({ error: "Tu cuenta no tiene contraseña asignada" });
+      }
+      
+      const isValidPassword = await bcrypt.compare(password, affiliate.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Credenciales inválidas" });
+      }
+      
+      res.json({ 
+        success: true, 
+        data: {
+          id: affiliate.id,
+          name: affiliate.name,
+          email: affiliate.email,
+          phone: affiliate.phone,
+          level: affiliate.level,
+          discount: affiliate.discount,
+          minimumPurchase: affiliate.minimumPurchase,
+          status: affiliate.status
         }
       });
     } catch (error: any) {

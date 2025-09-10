@@ -2,10 +2,14 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Menu, ShoppingCart, User, X } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import { useDistributor } from '@/contexts/DistributorContext'
+import { useLocation } from 'wouter'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { getCartCount, openCart } = useCart()
+  const { distributor } = useDistributor()
+  const [, setLocation] = useLocation()
 
   return (
     <header className="fixed top-0 w-full z-50 bg-black/90 backdrop-blur-md border-b border-purple-500/20">
@@ -51,7 +55,13 @@ export default function Header() {
               )}
             </Button>
             
-            <Button variant="outline" size="icon" className="hidden lg:flex border-purple-500/30 hover:border-purple-400 text-white hover:text-white">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="hidden lg:flex border-purple-500/30 hover:border-purple-400 text-white hover:text-white"
+              onClick={() => distributor ? setLocation('/distributor/dashboard') : setLocation('/distributor/login')}
+              data-testid="button-distributor"
+            >
               <User className="h-4 w-4 text-white" />
             </Button>
 

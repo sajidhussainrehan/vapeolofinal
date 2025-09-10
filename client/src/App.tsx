@@ -5,12 +5,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { DistributorProvider } from "@/contexts/DistributorContext";
 import CartModal from "@/components/CartModal";
 import Home from "@/pages/Home";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminAffiliates from "@/pages/AdminAffiliates";
 import AdminProducts from "@/pages/AdminProducts";
+import DistributorLogin from "@/pages/DistributorLogin";
+import DistributorDashboard from "@/pages/DistributorDashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +24,8 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/affiliates" component={AdminAffiliates} />
       <Route path="/admin/products" component={AdminProducts} />
+      <Route path="/distributor/login" component={DistributorLogin} />
+      <Route path="/distributor/dashboard" component={DistributorDashboard} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
@@ -31,13 +36,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CartProvider>
-          <AuthProvider>
-            <Toaster />
-            <Router />
-            <CartModal />
-          </AuthProvider>
-        </CartProvider>
+        <DistributorProvider>
+          <CartProvider>
+            <AuthProvider>
+              <Toaster />
+              <Router />
+              <CartModal />
+            </AuthProvider>
+          </CartProvider>
+        </DistributorProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

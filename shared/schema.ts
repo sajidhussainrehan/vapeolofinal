@@ -22,6 +22,7 @@ export const affiliates = pgTable("affiliates", {
   discount: decimal("discount", { precision: 5, scale: 2 }).notNull(),
   minimumPurchase: decimal("minimum_purchase", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  password: text("password"), // Para login de distribuidores (null si no aprobado)
   message: text("message"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   approvedAt: timestamp("approved_at"),

@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import { useDistributor } from '@/contexts/DistributorContext'
 
 interface FlavorSelectorProps {
   product: {
@@ -18,6 +19,12 @@ interface FlavorSelectorProps {
 export default function FlavorSelector({ product }: FlavorSelectorProps) {
   const [selectedFlavor, setSelectedFlavor] = useState<string>('')
   const { addToCart } = useCart()
+  const { distributor } = useDistributor()
+
+  // Calculate the actual price (distributor price if logged in)
+  const actualPrice = distributor 
+    ? `Q${(parseFloat(product.price.replace('Q', '')) * (1 - parseFloat(distributor.discount) / 100)).toFixed(0)}`
+    : product.price
 
   const handleAddToCart = () => {
     if (!selectedFlavor) {
@@ -28,7 +35,7 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
     addToCart({
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: actualPrice,
       puffs: product.puffs,
       image: product.image,
       flavor: selectedFlavor

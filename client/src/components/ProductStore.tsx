@@ -2,12 +2,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Star, ShoppingCart } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import { useDistributor } from '@/contexts/DistributorContext'
 import FlavorSelector from '@/components/FlavorSelector'
 import cubeImage from '@assets/generated_images/CUBE_vape_product_image_0a8cd099.png'
 import energyImage from '@assets/generated_images/ENERGY_vape_product_image_9b09255c.png'
 
 export default function ProductStore() {
   const { getCartCount } = useCart()
+  const { distributor } = useDistributor()
 
   const products = [
     {
@@ -107,7 +109,21 @@ export default function ProductStore() {
                     <p className="text-purple-300 font-medium">{product.puffs}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-black text-green-400">{product.price}</div>
+                    {distributor ? (
+                      <div className="space-y-1">
+                        <div className="text-sm text-gray-400 line-through">
+                          Público: {product.price}
+                        </div>
+                        <div className="text-2xl font-black text-green-400">
+                          Q{(parseFloat(product.price.replace('Q', '')) * (1 - parseFloat(distributor.discount) / 100)).toFixed(0)}
+                        </div>
+                        <div className="text-xs text-purple-300">
+                          {distributor.discount}% desc.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-black text-green-400">{product.price}</div>
+                    )}
                   </div>
                 </div>
 
