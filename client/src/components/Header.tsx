@@ -34,24 +34,24 @@ export default function Header() {
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="icon" className="relative border-purple-500/30 hover:border-purple-400">
-              <ShoppingCart className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="relative border-purple-500/30 hover:border-purple-400 text-white hover:text-white">
+              <ShoppingCart className="h-4 w-4 text-white" />
               <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                 0
               </span>
             </Button>
             
-            <Button variant="outline" size="icon" className="hidden lg:flex border-purple-500/30 hover:border-purple-400">
-              <User className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="hidden lg:flex border-purple-500/30 hover:border-purple-400 text-white hover:text-white">
+              <User className="h-4 w-4 text-white" />
             </Button>
 
             <Button 
               variant="outline" 
               size="icon" 
-              className="lg:hidden border-purple-500/30"
+              className="lg:hidden border-purple-500/30 text-white hover:text-white"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {isMenuOpen ? <X className="h-4 w-4 text-white" /> : <Menu className="h-4 w-4 text-white" />}
             </Button>
           </div>
         </div>
@@ -72,8 +72,8 @@ export default function Header() {
               <a href="#contacto" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
                 Contacto
               </a>
-              <Button variant="outline" className="w-full border-purple-500/30 hover:border-purple-400">
-                <User className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="w-full border-purple-500/30 hover:border-purple-400 text-white hover:text-white">
+                <User className="h-4 w-4 mr-2 text-white" />
                 Iniciar Sesión
               </Button>
             </nav>
