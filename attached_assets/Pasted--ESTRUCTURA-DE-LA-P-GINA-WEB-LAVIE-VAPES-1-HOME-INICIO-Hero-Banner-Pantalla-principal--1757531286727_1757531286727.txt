@@ -1,0 +1,209 @@
+🧠 ESTRUCTURA DE LA PÁGINA WEB – LAVIE VAPES
+🌐 1. HOME / INICIO
+🔥 Hero Banner (Pantalla principal con imagen impactante)
+
+Imagen: Jovenes adultos disfrutando de Vapes LAVIE con neones, fondos futuristas.
+Copy principal:
+
+"LAVIE: Donde la experiencia y el sabor se fusionan."
+15 años diseñando los mejores cigarrillos electrónicos del mercado.
+🌟 Más de 25 sabores | 💨 Hasta 20,000 puffs | 🚀 Envíos a todo el país.
+
+Botones (CTAs):
+
+🛒 Ver Productos
+
+🤝 Unirme como Afiliado
+
+🔎 2. CONOCE LAVIE
+
+Sección de marca – confianza + historia:
+
+🧊 ¿Quiénes somos?
+
+LAVIE es una marca con más de 15 años de innovación en diseño y fabricación de vapes.
+Cada dispositivo combina tecnología avanzada, sabores intensos y una experiencia premium.
+Nuestra misión: redefinir el vapeo en Latinoamérica.
+
+Puntos destacados (íconos o animaciones):
+
+🌍 Presencia en más de 10 países
+
+🔋 Baterías de larga duración
+
+🌬️ Hasta 20,000 puffs por dispositivo
+
+💯 Garantía de calidad
+
+🛍️ 3. TIENDA ONLINE
+
+Vista tipo e-commerce con filtros por categoría y sabor.
+
+CATEGORÍAS DE PRODUCTO:
+
+CYBER - 20,000 Puffs
+💸 Precio público: Q240
+✅ Sabores disponibles: Mango Ice, Blueberry, Cola, Grape, Sandía Chill
+📦 Botón: Agregar al carrito
+
+CUBE - 20,000 Puffs
+💸 Precio público: Q220
+✅ Sabores disponibles: Strawberry Kiwi, Menta, Cola, Frutas Tropicales, Piña
+📦 Botón: Agregar al carrito
+
+ENERGY - 15,000 Puffs
+💸 Precio público: Q170
+✅ Sabores disponibles: Blue Razz, Mango Chill, Fresa, Cereza, Uva
+📦 Botón: Agregar al carrito
+
+TORCH - 6,000 Puffs
+💸 Precio público: Q125
+✅ Sabores disponibles: Menta, Banana Ice, Frutos Rojos, Chicle, Limonada
+📦 Botón: Agregar al carrito
+
+BAR - 800 Puffs
+💸 Precio público: Q65
+✅ Sabores disponibles: Sandía, Uva, Cola, Mango, Piña Colada
+📦 Botón: Agregar al carrito
+
+🛒 Funcionalidad de carrito:
+
+Vista rápida del carrito
+
+Checkout sencillo
+
+Métodos de pago múltiples (Tarjeta, Transferencia, Contra entrega)
+
+Cálculo de envío automático
+
+💰 4. PROGRAMA DE AFILIACIÓN
+Título: Gana mientras vapeas – ¡Haz parte de LAVIE!
+🚀 ¿Quieres ganar dinero vendiendo nuestros vapes? ¡Únete a nuestro equipo!
+🧑‍💼 1. Agente
+
+Descuento: 10% a 12%
+
+Monto mínimo de compra: Q500
+
+Ideal para uso personal o pequeñas ventas
+
+Acceso a ofertas exclusivas
+
+🧳 2. Distribuidor
+
+Descuento: 25% a 30%
+
+Monto mínimo de compra: Q1500
+
+Para revendedores activos
+
+Herramientas de marketing incluidas
+
+🤝 3. Socio
+
+Descuento: 45% a 50%
+
+Monto mínimo de compra: Q3500
+
+Apoyo comercial personalizado
+
+Beneficios exclusivos y prioridad de stock
+
+CTA:
+🔗 Registrarse como Afiliado
+📄 Formulario integrado con validación automática
+
+⭐ 5. TESTIMONIOS / COMUNIDAD
+
+“Desde que soy distribuidor de LAVIE, genero ingresos mensuales constantes y mis clientes aman los sabores.”
+— Carlos G., Socio
+
+“Los sabores son intensos, el diseño es moderno y duran muchísimo.”
+— Ana M., Cliente frecuente
+
+📸 6. GALERÍA / SOCIAL MEDIA
+Feed en vivo de Instagram / TikTok
+
+📱 Fotos de clientes con vapes
+
+🎥 Reels de unboxing y reviews
+
+🧃 Promos y giveaways
+
+CTA:
+👉 Síguenos en @lavievapes.gt
+
+📦 7. ENVÍO Y PAGOS
+
+Título: 📍 ¿Dónde enviamos?
+
+Envíos a toda Guatemala
+
+Entregas en 24-72h hábiles
+
+Envío gratis desde Q500
+
+Pagos aceptados:
+
+Tarjeta
+
+Transferencia
+
+Contra entrega (Q50 mínimo)
+
+🧑‍💻 8. BLOG / CONSEJOS
+
+Temas recomendados:
+
+"Cómo elegir tu vape ideal"
+
+"¿Cuántos puffs necesito realmente?"
+
+"Mitos del vapeo desmentidos"
+
+"Los sabores más vendidos de este mes"
+
+📞 9. CONTACTO
+
+Formulario de contacto:
+
+Nombre
+
+Correo
+
+Mensaje
+
+WhatsApp directo:
+💬 ¿Dudas? Escríbenos al instante.
+
+🔐 10. LOGIN / PANEL DE AFILIADOS
+
+Acceso a Dashboard personal:
+
+Historial de compras
+
+Porcentaje aplicado
+
+Estadísticas de ventas (si aplica)
+
+Materiales promocionales descargables
+
+🎨 DISEÑO RECOMENDADO
+
+Colores: Degradados futuristas (Neón púrpura, Azul eléctrico, Negro mate)
+
+Tipografía: Moderna y bold (como Montserrat o Poppins)
+
+Estilo visual: Futurista + juvenil + limpio
+
+Iconografía: Minimalista, con animaciones sutiles
+
+📌 BONUS: SEO + COPY ESTRATÉGICO
+
+Títulos y descripciones optimizadas para Google (Ej. “Comprar Vapes en Guatemala | LAVIE Oficial”)
+
+Copy claro, directo y emocional
+
+Etiquetas ALT en imágenes de producto
+
+URL limpias y amigables: /productos/cyber, /afiliados/, /tienda/energy
