@@ -12,7 +12,7 @@ export default function Header() {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <div className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent font-mono">
-              LAVIE
+              VAPEOLO
             </div>
           </div>
 

@@ -41,8 +41,8 @@ export default function AboutSection() {
           </h2>
           <div className="max-w-4xl mx-auto">
             <p className="text-xl text-gray-300 mb-6 leading-relaxed">
-              LAVIE es una marca con más de <span className="text-purple-400 font-bold">15 años de innovación</span> en 
-              diseño y fabricación de vapes. Cada dispositivo combina tecnología avanzada, sabores intensos y una 
+              VAPEOLO es distribuidora oficial de LAVIE, una marca con más de <span className="text-purple-400 font-bold">15 años de innovación</span> en 
+              diseño y fabricación de vapes. Cada dispositivo combine tecnología avanzada, sabores intensos y una 
               experiencia premium.
             </p>
             <p className="text-lg text-blue-300 font-medium">

@@ -91,7 +91,7 @@ export default function AffiliateProgram() {
             Gana mientras vapeas - ¡Haz parte de LAVIE!
           </p>
           <p className="text-lg text-purple-300">
-            ¿Quieres ganar dinero vendiendo nuestros vapes? ¡Únete a nuestro equipo!
+            ¿Quieres ganar dinero vendiendo vapes LAVIE? ¡Únete a VAPEOLO!
           </p>
         </div>
 

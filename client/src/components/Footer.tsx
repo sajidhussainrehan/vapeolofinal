@@ -34,10 +34,10 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="lg:col-span-1">
             <div className="text-3xl font-black bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent mb-4 font-mono">
-              LAVIE
+              VAPEOLO
             </div>
             <p className="text-gray-400 mb-6 leading-relaxed">
-              15 años diseñando los mejores cigarrillos electrónicos del mercado. 
+              Distribuidora oficial de LAVIE con 15 años diseñando los mejores cigarrillos electrónicos del mercado. 
               Donde la experiencia y el sabor se fusionan.
             </p>
             
@@ -129,7 +129,7 @@ export default function Footer() {
         <div className="py-8 border-t border-purple-500/20">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-gray-400 text-sm">
-              © {currentYear} LAVIE Vapes. Todos los derechos reservados.
+              © {currentYear} VAPEOLO - Distribuidora oficial LAVIE. Todos los derechos reservados.
             </div>
             
             <div className="flex flex-wrap gap-6 text-sm">
