@@ -24,10 +24,10 @@ export default function CartModal() {
     alert(`¡Gracias por tu compra! Total: Q${total.toFixed(2)}\n\nSerás redirigido a WhatsApp para completar tu pedido.`)
     // Here you would typically integrate with a payment provider or WhatsApp API
     const message = `¡Hola! Quiero hacer un pedido:\n\n${cart.map(item => 
-      `• ${item.name} (${item.puffs}) x${item.quantity} = Q${(parseFloat(item.price.replace('Q', '')) * item.quantity).toFixed(2)}`
-    ).join('\n')}\n\nTotal: Q${total.toFixed(2)}`
+      `• ${item.name} (${item.puffs})\n  Sabor: ${item.flavor}\n  Cantidad: ${item.quantity}\n  Subtotal: Q${(parseFloat(item.price.replace('Q', '')) * item.quantity).toFixed(2)}`
+    ).join('\n\n')}\n\nTotal del pedido: Q${total.toFixed(2)}`
     
-    const whatsappUrl = `https://wa.me/50212345678?text=${encodeURIComponent(message)}`
+    const whatsappUrl = `https://wa.me/50242015748?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, '_blank')
     clearCart()
     closeCart()
@@ -61,7 +61,7 @@ export default function CartModal() {
               {/* Cart Items */}
               <div className="space-y-3">
                 {cart.map((item) => (
-                  <Card key={item.id} className="bg-gray-900/50 border-purple-500/20">
+                  <Card key={item.cartItemId} className="bg-gray-900/50 border-purple-500/20">
                     <CardContent className="p-4">
                       <div className="flex items-center space-x-4">
                         {/* Product Image */}
@@ -83,6 +83,7 @@ export default function CartModal() {
                         <div className="flex-1">
                           <h4 className="text-white font-bold">{item.name}</h4>
                           <p className="text-purple-300 text-sm">{item.puffs}</p>
+                          <p className="text-blue-300 text-sm">Sabor: {item.flavor}</p>
                           <p className="text-green-400 font-bold">{item.price}</p>
                         </div>
 
@@ -92,13 +93,13 @@ export default function CartModal() {
                             size="icon"
                             variant="outline"
                             className="h-8 w-8 border-purple-500/30 text-white hover:text-white"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            data-testid={`button-decrease-${item.id}`}
+                            onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
+                            data-testid={`button-decrease-${item.cartItemId}`}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
                           
-                          <span className="text-white font-bold min-w-[2rem] text-center" data-testid={`quantity-${item.id}`}>
+                          <span className="text-white font-bold min-w-[2rem] text-center" data-testid={`quantity-${item.cartItemId}`}>
                             {item.quantity}
                           </span>
                           
@@ -106,8 +107,8 @@ export default function CartModal() {
                             size="icon"
                             variant="outline"
                             className="h-8 w-8 border-purple-500/30 text-white hover:text-white"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            data-testid={`button-increase-${item.id}`}
+                            onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+                            data-testid={`button-increase-${item.cartItemId}`}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -125,8 +126,8 @@ export default function CartModal() {
                           size="icon"
                           variant="outline"
                           className="h-8 w-8 border-red-500/30 text-red-400 hover:text-red-300 hover:border-red-400/50"
-                          onClick={() => removeFromCart(item.id)}
-                          data-testid={`button-remove-${item.id}`}
+                          onClick={() => removeFromCart(item.cartItemId)}
+                          data-testid={`button-remove-${item.cartItemId}`}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>

@@ -1,13 +1,13 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ShoppingCart, Star } from 'lucide-react'
+import { Star, ShoppingCart } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import FlavorSelector from '@/components/FlavorSelector'
 import cubeImage from '@assets/generated_images/CUBE_vape_product_image_0a8cd099.png'
 import energyImage from '@assets/generated_images/ENERGY_vape_product_image_9b09255c.png'
 
 export default function ProductStore() {
-  const { addToCart, getCartCount } = useCart()
+  const { getCartCount } = useCart()
 
   const products = [
     {
@@ -53,15 +53,6 @@ export default function ProductStore() {
     }
   ]
 
-  const handleAddToCart = (product: typeof products[0]) => {
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      puffs: product.puffs,
-      image: product.image
-    })
-  }
 
   return (
     <section id="productos" className="py-20 bg-gray-900">
@@ -137,14 +128,7 @@ export default function ProductStore() {
                   </div>
                 </div>
 
-                <Button 
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                  onClick={() => handleAddToCart(product)}
-                  data-testid={`button-add-cart-${product.id}`}
-                >
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Agregar al carrito
-                </Button>
+                <FlavorSelector product={product} />
               </CardContent>
             </Card>
           ))}
