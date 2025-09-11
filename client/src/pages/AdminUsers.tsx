@@ -18,7 +18,14 @@ import {
   User,
   Check,
   X,
-  MoreHorizontal
+  MoreHorizontal,
+  Package,
+  PackagePlus,
+  Trash2,
+  UserX,
+  UserCheck,
+  Pause,
+  Settings
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +34,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AdminProfileDropdown from "@/components/AdminProfileDropdown";
@@ -90,6 +99,12 @@ export default function AdminUsers() {
       password: "",
       role: "sales",
       active: true,
+      editInventory: false,
+      addProduct: false,
+      deleteItems: false,
+      deleteAffiliate: false,
+      authorizeAffiliate: false,
+      pauseAffiliate: false,
     },
   });
 
@@ -100,6 +115,12 @@ export default function AdminUsers() {
       username: "",
       role: "sales",
       active: true,
+      editInventory: false,
+      addProduct: false,
+      deleteItems: false,
+      deleteAffiliate: false,
+      authorizeAffiliate: false,
+      pauseAffiliate: false,
     },
   });
 
@@ -200,6 +221,12 @@ export default function AdminUsers() {
       username: user.username,
       role: user.role,
       active: user.active,
+      editInventory: user.editInventory || false,
+      addProduct: user.addProduct || false,
+      deleteItems: user.deleteItems || false,
+      deleteAffiliate: user.deleteAffiliate || false,
+      authorizeAffiliate: user.authorizeAffiliate || false,
+      pauseAffiliate: user.pauseAffiliate || false,
     });
     setIsEditDialogOpen(true);
   };
@@ -216,6 +243,42 @@ export default function AdminUsers() {
 
   const getStatusBadgeColor = (active: boolean) => {
     return active ? 'bg-green-600' : 'bg-red-600';
+  };
+
+  const getPermissionIcon = (permission: string) => {
+    const iconMap = {
+      editInventory: Package,
+      addProduct: PackagePlus,
+      deleteItems: Trash2,
+      deleteAffiliate: UserX,
+      authorizeAffiliate: UserCheck,
+      pauseAffiliate: Pause,
+    };
+    return iconMap[permission as keyof typeof iconMap] || Settings;
+  };
+
+  const getPermissionLabel = (permission: string) => {
+    const labelMap = {
+      editInventory: 'Editar Inventario',
+      addProduct: 'Agregar Productos',
+      deleteItems: 'Eliminar Elementos',
+      deleteAffiliate: 'Eliminar Afiliados',
+      authorizeAffiliate: 'Autorizar Afiliados',
+      pauseAffiliate: 'Pausar Afiliados',
+    };
+    return labelMap[permission as keyof typeof labelMap] || permission;
+  };
+
+  const getUserPermissions = (user: UserType) => {
+    const permissions = [
+      { key: 'editInventory', value: user.editInventory },
+      { key: 'addProduct', value: user.addProduct },
+      { key: 'deleteItems', value: user.deleteItems },
+      { key: 'deleteAffiliate', value: user.deleteAffiliate },
+      { key: 'authorizeAffiliate', value: user.authorizeAffiliate },
+      { key: 'pauseAffiliate', value: user.pauseAffiliate },
+    ];
+    return permissions.filter(p => p.value).map(p => p.key);
   };
 
   return (
@@ -285,8 +348,8 @@ export default function AdminUsers() {
                   <TableHeader>
                     <TableRow className="border-gray-700">
                       <TableHead className="text-gray-400">Usuario</TableHead>
-                      <TableHead className="text-gray-400">Rol</TableHead>
-                      <TableHead className="text-gray-400">Estado</TableHead>
+                      <TableHead className="text-gray-400">Rol & Estado</TableHead>
+                      <TableHead className="text-gray-400">Permisos</TableHead>
                       <TableHead className="text-gray-400">Fecha de Creación</TableHead>
                       <TableHead className="text-gray-400 text-right">Acciones</TableHead>
                     </TableRow>
@@ -310,40 +373,74 @@ export default function AdminUsers() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            className={`${getRoleBadgeColor(user.role)} text-white`}
-                            data-testid={`badge-role-${user.id}`}
-                          >
-                            {user.role === 'admin' ? (
-                              <>
-                                <Shield className="w-3 h-3 mr-1" />
-                                Administrador
-                              </>
-                            ) : (
-                              <>
-                                <User className="w-3 h-3 mr-1" />
-                                Ventas
-                              </>
-                            )}
-                          </Badge>
+                          <div className="flex flex-col gap-2">
+                            <Badge 
+                              className={`${getRoleBadgeColor(user.role)} text-white w-fit`}
+                              data-testid={`badge-role-${user.id}`}
+                            >
+                              {user.role === 'admin' ? (
+                                <>
+                                  <Shield className="w-3 h-3 mr-1" />
+                                  Administrador
+                                </>
+                              ) : (
+                                <>
+                                  <User className="w-3 h-3 mr-1" />
+                                  Ventas
+                                </>
+                              )}
+                            </Badge>
+                            <Badge 
+                              className={`${getStatusBadgeColor(user.active)} text-white w-fit`}
+                              data-testid={`badge-status-${user.id}`}
+                            >
+                              {user.active ? (
+                                <>
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Activo
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-3 h-3 mr-1" />
+                                  Inactivo
+                                </>
+                              )}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            className={`${getStatusBadgeColor(user.active)} text-white`}
-                            data-testid={`badge-status-${user.id}`}
-                          >
-                            {user.active ? (
-                              <>
-                                <Check className="w-3 h-3 mr-1" />
-                                Activo
-                              </>
+                          <div className="flex flex-wrap gap-1">
+                            {user.role === 'admin' ? (
+                              <Badge className="bg-purple-800/50 text-purple-200 text-xs">
+                                Todos los permisos
+                              </Badge>
                             ) : (
-                              <>
-                                <X className="w-3 h-3 mr-1" />
-                                Inactivo
-                              </>
+                              getUserPermissions(user).length > 0 ? (
+                                getUserPermissions(user).slice(0, 2).map((permission) => {
+                                  const Icon = getPermissionIcon(permission);
+                                  return (
+                                    <Badge
+                                      key={permission}
+                                      className="bg-blue-600/80 text-white text-xs"
+                                      data-testid={`permission-${permission}-${user.id}`}
+                                    >
+                                      <Icon className="w-3 h-3 mr-1" />
+                                      {getPermissionLabel(permission)}
+                                    </Badge>
+                                  );
+                                })
+                              ) : (
+                                <Badge className="bg-gray-600 text-gray-300 text-xs">
+                                  Sin permisos especiales
+                                </Badge>
+                              )
                             )}
-                          </Badge>
+                            {user.role !== 'admin' && getUserPermissions(user).length > 2 && (
+                              <Badge className="bg-gray-600 text-gray-300 text-xs">
+                                +{getUserPermissions(user).length - 2} más
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-gray-300">
                           {new Date(user.createdAt).toLocaleDateString('es-ES', {
@@ -530,6 +627,175 @@ export default function AdminUsers() {
                   )}
                 />
 
+                {/* Granular Permissions Section */}
+                <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+                  <div className="space-y-0.5 mb-4">
+                    <h3 className="text-base font-medium text-white">Permisos Granulares</h3>
+                    <p className="text-sm text-gray-400">
+                      Selecciona los permisos específicos para este usuario
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={createForm.control}
+                      name="editInventory"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-create-editInventory"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <Package className="w-4 h-4 mr-2 text-blue-400" />
+                              Editar Inventario
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede modificar cantidades de productos
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={createForm.control}
+                      name="addProduct"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-create-addProduct"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <PackagePlus className="w-4 h-4 mr-2 text-green-400" />
+                              Agregar Productos
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede crear nuevos productos
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={createForm.control}
+                      name="deleteItems"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-create-deleteItems"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <Trash2 className="w-4 h-4 mr-2 text-red-400" />
+                              Eliminar Elementos
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede eliminar productos y otros elementos
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={createForm.control}
+                      name="deleteAffiliate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-create-deleteAffiliate"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <UserX className="w-4 h-4 mr-2 text-red-400" />
+                              Eliminar Afiliados
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede eliminar registros de afiliados
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={createForm.control}
+                      name="authorizeAffiliate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-create-authorizeAffiliate"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <UserCheck className="w-4 h-4 mr-2 text-green-400" />
+                              Autorizar Afiliados
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede aprobar o rechazar solicitudes de afiliación
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={createForm.control}
+                      name="pauseAffiliate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-create-pauseAffiliate"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <Pause className="w-4 h-4 mr-2 text-yellow-400" />
+                              Pausar Afiliados
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede pausar o reactivar afiliados
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="mt-3 p-2 bg-blue-900/20 rounded border border-blue-500/20">
+                    <p className="text-xs text-blue-300 flex items-center">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Los administradores tienen automáticamente todos los permisos
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button
                     type="button"
@@ -567,7 +833,7 @@ export default function AdminUsers() {
               </DialogDescription>
             </DialogHeader>
             <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto">
                 <FormField
                   control={editForm.control}
                   name="username"
@@ -645,6 +911,175 @@ export default function AdminUsers() {
                     </FormItem>
                   )}
                 />
+
+                {/* Granular Permissions Section */}
+                <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+                  <div className="space-y-0.5 mb-4">
+                    <h3 className="text-base font-medium text-white">Permisos Granulares</h3>
+                    <p className="text-sm text-gray-400">
+                      Modifica los permisos específicos para este usuario
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="editInventory"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-edit-editInventory"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <Package className="w-4 h-4 mr-2 text-blue-400" />
+                              Editar Inventario
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede modificar cantidades de productos
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="addProduct"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-edit-addProduct"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <PackagePlus className="w-4 h-4 mr-2 text-green-400" />
+                              Agregar Productos
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede crear nuevos productos
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="deleteItems"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-edit-deleteItems"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <Trash2 className="w-4 h-4 mr-2 text-red-400" />
+                              Eliminar Elementos
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede eliminar productos y otros elementos
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="deleteAffiliate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-edit-deleteAffiliate"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <UserX className="w-4 h-4 mr-2 text-red-400" />
+                              Eliminar Afiliados
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede eliminar registros de afiliados
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="authorizeAffiliate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-edit-authorizeAffiliate"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <UserCheck className="w-4 h-4 mr-2 text-green-400" />
+                              Autorizar Afiliados
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede aprobar o rechazar solicitudes de afiliación
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="pauseAffiliate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-edit-pauseAffiliate"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-white flex items-center">
+                              <Pause className="w-4 h-4 mr-2 text-yellow-400" />
+                              Pausar Afiliados
+                            </FormLabel>
+                            <div className="text-xs text-gray-400">
+                              Puede pausar o reactivar afiliados
+                            </div>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="mt-3 p-2 bg-blue-900/20 rounded border border-blue-500/20">
+                    <p className="text-xs text-blue-300 flex items-center">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Los administradores tienen automáticamente todos los permisos
+                    </p>
+                  </div>
+                </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button

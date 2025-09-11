@@ -565,6 +565,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: user.username,
         role: user.role,
         active: user.active,
+        editInventory: user.editInventory,
+        addProduct: user.addProduct,
+        deleteItems: user.deleteItems,
+        deleteAffiliate: user.deleteAffiliate,
+        authorizeAffiliate: user.authorizeAffiliate,
+        pauseAffiliate: user.pauseAffiliate,
         createdAt: user.createdAt
       }));
       
@@ -603,6 +609,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: newUser.username, 
           role: newUser.role, 
           active: newUser.active,
+          editInventory: newUser.editInventory,
+          addProduct: newUser.addProduct,
+          deleteItems: newUser.deleteItems,
+          deleteAffiliate: newUser.deleteAffiliate,
+          authorizeAffiliate: newUser.authorizeAffiliate,
+          pauseAffiliate: newUser.pauseAffiliate,
           createdAt: newUser.createdAt 
         } 
       });
@@ -644,6 +656,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: updatedUser.username, 
           role: updatedUser.role, 
           active: updatedUser.active,
+          editInventory: updatedUser.editInventory,
+          addProduct: updatedUser.addProduct,
+          deleteItems: updatedUser.deleteItems,
+          deleteAffiliate: updatedUser.deleteAffiliate,
+          authorizeAffiliate: updatedUser.authorizeAffiliate,
+          pauseAffiliate: updatedUser.pauseAffiliate,
           createdAt: updatedUser.createdAt 
         } 
       });
