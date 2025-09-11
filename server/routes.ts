@@ -442,7 +442,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subtitle: content.subtitle,
           description: content.description,
           buttonText: content.buttonText,
-          buttonUrl: content.buttonUrl
+          buttonUrl: content.buttonUrl,
+          content: content.content
         };
         return acc;
       }, {} as Record<string, any>);
