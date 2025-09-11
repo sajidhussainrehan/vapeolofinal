@@ -18,6 +18,7 @@ import {
   insertContactMessageSchema,
   insertUserSchema,
   updateUserSchema,
+  updateSelfProfileSchema,
   changePasswordSchema,
   adminResetPasswordSchema,
   insertHomepageContentSchema,
@@ -504,7 +505,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/me", requireAuth, async (req, res) => {
     try {
-      const validatedData = updateUserSchema.parse(req.body);
+      // SECURITY: Only allow username updates for self-profile
+      // Role and active status can only be modified by admins through /api/admin/users/:id
+      const validatedData = updateSelfProfileSchema.parse(req.body);
       const updatedUser = await storage.updateUser((req as AuthenticatedRequest).user.id, validatedData);
       
       res.json({ 

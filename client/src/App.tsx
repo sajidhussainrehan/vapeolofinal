@@ -16,6 +16,8 @@ import AdminUsers from "@/pages/AdminUsers";
 import AdminAffiliates from "@/pages/AdminAffiliates";
 import AdminProducts from "@/pages/AdminProducts";
 import AdminHomepage from "@/pages/AdminHomepage";
+import AdminSales from "@/pages/AdminSales";
+import AdminMessages from "@/pages/AdminMessages";
 import DistributorLogin from "@/pages/DistributorLogin";
 import DistributorDashboard from "@/pages/DistributorDashboard";
 import NotFound from "@/pages/not-found";
@@ -32,6 +34,8 @@ function Router() {
       <Route path="/admin/affiliates" component={AdminAffiliates} />
       <Route path="/admin/products" component={AdminProducts} />
       <Route path="/admin/homepage" component={AdminHomepage} />
+      <Route path="/admin/sales" component={AdminSales} />
+      <Route path="/admin/messages" component={AdminMessages} />
       <Route path="/distributor/login" component={DistributorLogin} />
       <Route path="/distributor/dashboard" component={DistributorDashboard} />
       {/* Fallback to 404 */}

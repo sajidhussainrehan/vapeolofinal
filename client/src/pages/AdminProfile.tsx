@@ -13,7 +13,6 @@ import {
   Lock, 
   Save,
   ArrowLeft,
-  Shield,
   Calendar
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,9 +23,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  updateUserSchema,
+  updateSelfProfileSchema,
   changePasswordSchema,
-  type UpdateUser,
+  type UpdateSelfProfile,
   type ChangePassword,
   type User as UserType
 } from "@shared/schema";
@@ -61,13 +60,11 @@ export default function AdminProfile() {
     },
   });
 
-  // Profile update form
-  const profileForm = useForm<UpdateUser>({
-    resolver: zodResolver(updateUserSchema),
+  // Profile update form (restricted to username only for security)
+  const profileForm = useForm<UpdateSelfProfile>({
+    resolver: zodResolver(updateSelfProfileSchema),
     defaultValues: {
       username: profile?.username || "",
-      role: profile?.role || "sales",
-      active: profile?.active ?? true,
     },
   });
 
@@ -83,7 +80,7 @@ export default function AdminProfile() {
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: (data: UpdateUser) => apiRequest(`/api/admin/me`, "PATCH", data),
+    mutationFn: (data: UpdateSelfProfile) => apiRequest(`/api/admin/me`, "PATCH", data),
     onSuccess: () => {
       toast({
         title: "Perfil actualizado",
@@ -124,13 +121,11 @@ export default function AdminProfile() {
     if (profile) {
       profileForm.reset({
         username: profile.username,
-        role: profile.role,
-        active: profile.active,
       });
     }
   }, [profile, profileForm]);
 
-  const onProfileSubmit = (data: UpdateUser) => {
+  const onProfileSubmit = (data: UpdateSelfProfile) => {
     updateProfileMutation.mutate(data);
   };
 
@@ -213,7 +208,7 @@ export default function AdminProfile() {
                 Información del Perfil
               </CardTitle>
               <CardDescription className="text-gray-400">
-                Actualiza tu información personal y configuración de cuenta
+                Actualiza tu nombre de usuario. Los roles y permisos solo pueden ser modificados por administradores.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -229,82 +224,22 @@ export default function AdminProfile() {
               ) : (
                 <Form {...profileForm}>
                   <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        control={profileForm.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-white">Usuario</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="Nombre de usuario"
-                                className="bg-gray-800 border-gray-700 text-white"
-                                data-testid="input-username"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={profileForm.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-white">Rol</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger 
-                                  className="bg-gray-800 border-gray-700 text-white"
-                                  data-testid="select-role"
-                                >
-                                  <SelectValue placeholder="Selecciona un rol" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="bg-gray-800 border-gray-700">
-                                <SelectItem value="admin" className="text-white hover:bg-gray-700">
-                                  <div className="flex items-center">
-                                    <Shield className="w-4 h-4 mr-2 text-purple-400" />
-                                    Administrador
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="sales" className="text-white hover:bg-gray-700">
-                                  <div className="flex items-center">
-                                    <User className="w-4 h-4 mr-2 text-green-400" />
-                                    Ventas
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
+                    {/* Username field - only editable field for security */}
                     <FormField
                       control={profileForm.control}
-                      name="active"
+                      name="username"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-700 bg-gray-800/50 p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base text-white">
-                              Cuenta Activa
-                            </FormLabel>
-                            <div className="text-sm text-gray-400">
-                              Determina si la cuenta puede acceder al sistema
-                            </div>
-                          </div>
+                        <FormItem>
+                          <FormLabel className="text-white">Usuario</FormLabel>
                           <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="switch-active"
+                            <Input
+                              {...field}
+                              placeholder="Nombre de usuario"
+                              className="bg-gray-800 border-gray-700 text-white"
+                              data-testid="input-username"
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -313,6 +248,26 @@ export default function AdminProfile() {
                     <div className="space-y-4">
                       <Separator className="bg-gray-700" />
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-2">
+                          <Label className="text-gray-400">Rol</Label>
+                          <div className="text-white bg-gray-800 p-2 rounded flex items-center">
+                            <User className="w-4 h-4 mr-2 text-green-400" />
+                            {profile?.role === 'admin' ? 'Administrador' : 'Ventas'}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-gray-400">Estado</Label>
+                          <div className={`p-2 rounded flex items-center ${
+                            profile?.active 
+                              ? 'text-green-400 bg-green-400/10' 
+                              : 'text-red-400 bg-red-400/10'
+                          }`}>
+                            <div className={`w-2 h-2 rounded-full mr-2 ${
+                              profile?.active ? 'bg-green-400' : 'bg-red-400'
+                            }`}></div>
+                            {profile?.active ? 'Activo' : 'Inactivo'}
+                          </div>
+                        </div>
                         <div className="space-y-2">
                           <Label className="text-gray-400">ID de Usuario</Label>
                           <div className="text-white font-mono text-xs bg-gray-800 p-2 rounded">

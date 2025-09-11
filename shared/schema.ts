@@ -165,6 +165,11 @@ export const updateUserSchema = createInsertSchema(users).pick({
   active: true,
 }).partial();
 
+// Self-profile update schema - ONLY allows username updates (for security)
+export const updateSelfProfileSchema = createInsertSchema(users).pick({
+  username: true,
+}).partial();
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string()
@@ -276,6 +281,7 @@ export const updateProductFlavorSchema = createInsertSchema(productFlavors).pick
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type UpdateSelfProfile = z.infer<typeof updateSelfProfileSchema>;
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
 export type AdminResetPassword = z.infer<typeof adminResetPasswordSchema>;
 
