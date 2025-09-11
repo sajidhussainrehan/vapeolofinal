@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   ArrowLeft, 
   Plus,
@@ -23,16 +24,23 @@ import {
   AlertTriangle,
   TrendingDown,
   CheckCircle,
-  Info
+  Info,
+  Settings,
+  Trash2,
+  Save,
+  X
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { 
   type Product,
+  type ProductFlavor,
   getAvailableInventory,
   isOutOfStock,
   isLowStock,
-  getStockStatus
+  getStockStatus,
+  getFlavorAvailableInventory,
+  getFlavorStockStatus
 } from "@shared/schema";
 
 // Product interface is now imported from shared/schema.ts
@@ -45,6 +53,107 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'stock' | 'created'>('name');
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  
+  // Flavor management state
+  const [flavorDialogOpen, setFlavorDialogOpen] = useState(false);
+  const [currentProductForFlavors, setCurrentProductForFlavors] = useState<Product | null>(null);
+  const [editingFlavor, setEditingFlavor] = useState<ProductFlavor | null>(null);
+  const [deletingFlavor, setDeletingFlavor] = useState<ProductFlavor | null>(null);
+  const [flavorFormData, setFlavorFormData] = useState({
+    name: "",
+    inventory: "0",
+    reservedInventory: "0",
+    lowStockThreshold: "5",
+    active: true
+  });
+  const [flavorFormErrors, setFlavorFormErrors] = useState<{[key: string]: string}>({});
+
+  // Query for flavors when managing a specific product
+  const { data: productFlavors, isLoading: flavorsLoading } = useQuery({
+    queryKey: ["/api/admin/products", currentProductForFlavors?.id, "flavors"],
+    queryFn: async () => {
+      if (!currentProductForFlavors?.id) return [];
+      const response = await fetch(`/api/admin/products/${currentProductForFlavors.id}/flavors`, {
+        headers: {
+          Authorization: token || "",
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch flavors");
+      }
+      const result = await response.json();
+      return result.data as ProductFlavor[];
+    },
+    enabled: !!currentProductForFlavors?.id,
+  });
+
+  // Flavor mutations
+  const createFlavorMutation = useMutation({
+    mutationFn: async ({ productId, flavorData }: { productId: string; flavorData: any }) => {
+      return apiRequest("POST", `/api/admin/products/${productId}/flavors`, flavorData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products", currentProductForFlavors?.id, "flavors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      resetFlavorForm();
+      toast({
+        title: "Sabor creado",
+        description: "El sabor se ha creado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el sabor",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateFlavorMutation = useMutation({
+    mutationFn: async ({ flavorId, flavorData }: { flavorId: string; flavorData: any }) => {
+      return apiRequest("PATCH", `/api/admin/flavors/${flavorId}`, flavorData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products", currentProductForFlavors?.id, "flavors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      resetFlavorForm();
+      setEditingFlavor(null);
+      toast({
+        title: "Sabor actualizado",
+        description: "El sabor se ha actualizado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el sabor",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteFlavorMutation = useMutation({
+    mutationFn: async (flavorId: string) => {
+      return apiRequest("DELETE", `/api/admin/flavors/${flavorId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products", currentProductForFlavors?.id, "flavors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setDeletingFlavor(null);
+      toast({
+        title: "Sabor eliminado",
+        description: "El sabor se ha eliminado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el sabor",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -79,7 +188,7 @@ export default function AdminProducts() {
         throw new Error("Failed to fetch products");
       }
       const result = await response.json();
-      return result.data as Product[];
+      return result.data as (Product & { flavors?: ProductFlavor[] })[];
     },
   });
 
@@ -259,10 +368,99 @@ export default function AdminProducts() {
     });
   };
 
-  // Helper function to get stock status badge
+  // Flavor management functions
+  const handleOpenFlavorDialog = (product: Product) => {
+    setCurrentProductForFlavors(product);
+    setFlavorDialogOpen(true);
+    resetFlavorForm();
+  };
+
+  const resetFlavorForm = () => {
+    setFlavorFormData({
+      name: "",
+      inventory: "0",
+      reservedInventory: "0",
+      lowStockThreshold: "5",
+      active: true
+    });
+    setFlavorFormErrors({});
+    setEditingFlavor(null);
+  };
+
+  const handleEditFlavor = (flavor: ProductFlavor) => {
+    setEditingFlavor(flavor);
+    setFlavorFormData({
+      name: flavor.name,
+      inventory: flavor.inventory.toString(),
+      reservedInventory: flavor.reservedInventory.toString(),
+      lowStockThreshold: flavor.lowStockThreshold.toString(),
+      active: flavor.active
+    });
+    setFlavorFormErrors({});
+  };
+
+  const validateFlavorForm = () => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!flavorFormData.name.trim()) {
+      errors.name = "El nombre del sabor es requerido";
+    }
+    
+    const inventory = parseInt(flavorFormData.inventory) || 0;
+    const reservedInventory = parseInt(flavorFormData.reservedInventory) || 0;
+    const lowStockThreshold = parseInt(flavorFormData.lowStockThreshold) || 0;
+    
+    if (inventory < 0) {
+      errors.inventory = "El inventario no puede ser negativo";
+    }
+    
+    if (reservedInventory < 0) {
+      errors.reservedInventory = "El inventario reservado no puede ser negativo";
+    }
+    
+    if (reservedInventory > inventory) {
+      errors.reservedInventory = "El inventario reservado no puede ser mayor al inventario total";
+    }
+    
+    if (lowStockThreshold < 0) {
+      errors.lowStockThreshold = "El umbral de stock bajo no puede ser negativo";
+    }
+    
+    setFlavorFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleFlavorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateFlavorForm() || !currentProductForFlavors) {
+      return;
+    }
+    
+    const flavorData = {
+      name: flavorFormData.name.trim(),
+      inventory: parseInt(flavorFormData.inventory) || 0,
+      reservedInventory: parseInt(flavorFormData.reservedInventory) || 0,
+      lowStockThreshold: parseInt(flavorFormData.lowStockThreshold) || 5,
+      active: flavorFormData.active
+    };
+
+    if (editingFlavor) {
+      updateFlavorMutation.mutate({ flavorId: editingFlavor.id, flavorData });
+    } else {
+      createFlavorMutation.mutate({ productId: currentProductForFlavors.id, flavorData });
+    }
+  };
+
+  const handleDeleteFlavor = () => {
+    if (deletingFlavor) {
+      deleteFlavorMutation.mutate(deletingFlavor.id);
+    }
+  };
+
+  // Helper function to get stock status badge for backward compatibility
   const getStockStatusBadge = (product: Product) => {
     const status = getStockStatus(product);
-    const available = getAvailableInventory(product);
     
     switch (status) {
       case 'out_of_stock':
@@ -289,17 +487,193 @@ export default function AdminProducts() {
     }
   };
 
+  // Helper function to get flavor stock status badge
+  const getFlavorStockStatusBadge = (flavor: ProductFlavor) => {
+    const status = getFlavorStockStatus(flavor);
+    const available = getFlavorAvailableInventory(flavor);
+    
+    switch (status) {
+      case 'out_of_stock':
+        return (
+          <Badge variant="outline" className="border-red-500/50 text-red-400">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Sin Stock
+          </Badge>
+        );
+      case 'low_stock':
+        return (
+          <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
+            <TrendingDown className="w-3 h-3 mr-1" />
+            Stock Bajo
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="border-green-500/50 text-green-400">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            En Stock
+          </Badge>
+        );
+    }
+  };
+
+  // Helper function to get product stock status badge (based on flavors if available)
+  const getProductStockStatusBadge = (product: Product & { flavors?: ProductFlavor[] }) => {
+    if (product.flavors && product.flavors.length > 0) {
+      // Calculate total available inventory from all active flavors
+      const totalAvailable = product.flavors
+        .filter(f => f.active)
+        .reduce((sum, flavor) => sum + getFlavorAvailableInventory(flavor), 0);
+      
+      if (totalAvailable === 0) {
+        return (
+          <Badge variant="outline" className="border-red-500/50 text-red-400">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Sin Stock
+          </Badge>
+        );
+      }
+      
+      // Check if any active flavor is low stock
+      const hasLowStock = product.flavors
+        .filter(f => f.active)
+        .some(f => getFlavorStockStatus(f) === 'low_stock');
+      
+      if (hasLowStock) {
+        return (
+          <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
+            <TrendingDown className="w-3 h-3 mr-1" />
+            Stock Bajo
+          </Badge>
+        );
+      }
+      
+      return (
+        <Badge variant="outline" className="border-green-500/50 text-green-400">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          En Stock
+        </Badge>
+      );
+    }
+    
+    // Fallback to product-level inventory for backward compatibility
+    const status = getStockStatus(product);
+    switch (status) {
+      case 'out_of_stock':
+        return (
+          <Badge variant="outline" className="border-red-500/50 text-red-400">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Sin Stock
+          </Badge>
+        );
+      case 'low_stock':
+        return (
+          <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
+            <TrendingDown className="w-3 h-3 mr-1" />
+            Stock Bajo
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="border-green-500/50 text-green-400">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            En Stock
+          </Badge>
+        );
+    }
+  };
+
+  // Helper function to get total available inventory for product
+  const getProductTotalAvailable = (product: Product & { flavors?: ProductFlavor[] }) => {
+    if (product.flavors && product.flavors.length > 0) {
+      return product.flavors
+        .filter(f => f.active)
+        .reduce((sum, flavor) => sum + getFlavorAvailableInventory(flavor), 0);
+    }
+    return getAvailableInventory(product);
+  };
+
   // Helper function to sort products
   const sortedProducts = [...(products || [])].sort((a, b) => {
     switch (sortBy) {
       case 'stock':
-        return getAvailableInventory(a) - getAvailableInventory(b);
+        return getProductTotalAvailable(a) - getProductTotalAvailable(b);
       case 'created':
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       default:
         return a.name.localeCompare(b.name);
     }
   });
+
+  // Flavor Display Section Component
+  const FlavorDisplaySection = ({ product }: { product: Product }) => {
+    const { data: flavors, isLoading: flavorsLoading } = useQuery({
+      queryKey: ["/api/admin/products", product.id, "flavors"],
+      enabled: !!product.id,
+    });
+
+    if (flavorsLoading) {
+      return (
+        <div className="mb-3">
+          <p className="text-sm text-gray-400 mb-2">Sabores:</p>
+          <Skeleton className="h-6 w-32 bg-gray-800" />
+        </div>
+      );
+    }
+
+    if (!flavors || flavors.length === 0) {
+      return (
+        <div className="mb-3">
+          <p className="text-sm text-gray-400 mb-2">Sabores:</p>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs border-gray-500 text-gray-400">
+              Sin sabores registrados
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenFlavorDialog(product)}
+              className="text-xs text-blue-400 p-1 h-auto"
+            >
+              Agregar sabores
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    const activeFlavors = flavors.filter((f: any) => f.active);
+    const visibleFlavors = activeFlavors.slice(0, 3);
+    const totalFlavors = activeFlavors.length;
+
+    return (
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm text-gray-400">Sabores ({totalFlavors}):</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenFlavorDialog(product)}
+            className="text-xs text-blue-400 p-1 h-auto"
+          >
+            Gestionar
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {visibleFlavors.map((flavor: any) => (
+            <div key={flavor.id} className="flex items-center">
+              {getFlavorStockStatusBadge(flavor)}
+            </div>
+          ))}
+          {totalFlavors > 3 && (
+            <Badge variant="outline" className="text-xs border-gray-500 text-gray-400">
+              +{totalFlavors - 3} más
+            </Badge>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-black">
@@ -633,6 +1007,14 @@ export default function AdminProducts() {
                           >
                             <Edit2 className="w-4 h-4 text-purple-400" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenFlavorDialog(product)}
+                            data-testid={`button-manage-flavors-${product.id}`}
+                          >
+                            <Settings className="w-4 h-4 text-blue-400" />
+                          </Button>
                         </div>
                       </div>
                     </CardHeader>
@@ -645,23 +1027,7 @@ export default function AdminProducts() {
                         />
                       )}
                       
-                      {product.sabores.length > 0 && (
-                        <div className="mb-3">
-                          <p className="text-sm text-gray-400 mb-2">Sabores:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {product.sabores.slice(0, 3).map((sabor, index) => (
-                              <Badge key={index} variant="outline" className="text-xs border-purple-500/50 text-purple-300">
-                                {sabor}
-                              </Badge>
-                            ))}
-                            {product.sabores.length > 3 && (
-                              <Badge variant="outline" className="text-xs border-gray-500 text-gray-400">
-                                +{product.sabores.length - 3} más
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      <FlavorDisplaySection product={product} />
 
                       {product.description && (
                         <p className="text-sm text-gray-300 mb-3 line-clamp-2">
