@@ -1,8 +1,21 @@
 import { Button } from '@/components/ui/button'
 import { ArrowRight, ShoppingCart, Users } from 'lucide-react'
+import { useLocation } from 'wouter'
 import heroImage from '@assets/generated_images/Hero_banner_lifestyle_image_3d61fbb5.png'
 
 export default function HeroSection() {
+  const [, setLocation] = useLocation()
+
+  const scrollToProducts = () => {
+    const productosSection = document.getElementById('productos')
+    if (productosSection) {
+      productosSection.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
+  const navigateToAffiliates = () => {
+    setLocation('/affiliates')
+  }
   return (
     <section id="inicio" className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image with Gradient Overlay */}
@@ -56,6 +69,7 @@ export default function HeroSection() {
               size="lg" 
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold px-8 py-4 text-lg"
               data-testid="button-ver-productos"
+              onClick={scrollToProducts}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
               Ver Productos
@@ -67,6 +81,7 @@ export default function HeroSection() {
               variant="outline" 
               className="border-2 border-purple-400 text-purple-300 hover:bg-purple-400 hover:text-black font-bold px-8 py-4 text-lg backdrop-blur-sm"
               data-testid="button-afiliado"
+              onClick={navigateToAffiliates}
             >
               <Users className="mr-2 h-5 w-5" />
               Unirme como Afiliado
