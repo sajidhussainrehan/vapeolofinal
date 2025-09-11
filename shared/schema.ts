@@ -10,6 +10,15 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull().default("sales"), // 'admin' | 'sales'
   active: boolean("active").notNull().default(true),
+  
+  // Granular permissions
+  editInventory: boolean("edit_inventory").notNull().default(false),
+  addProduct: boolean("add_product").notNull().default(false),
+  deleteItems: boolean("delete_items").notNull().default(false),
+  deleteAffiliate: boolean("delete_affiliate").notNull().default(false),
+  authorizeAffiliate: boolean("authorize_affiliate").notNull().default(false),
+  pauseAffiliate: boolean("pause_affiliate").notNull().default(false),
+  
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
@@ -157,12 +166,24 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   role: true,
   active: true,
+  editInventory: true,
+  addProduct: true,
+  deleteItems: true,
+  deleteAffiliate: true,
+  authorizeAffiliate: true,
+  pauseAffiliate: true,
 });
 
 export const updateUserSchema = createInsertSchema(users).pick({
   username: true,
   role: true,
   active: true,
+  editInventory: true,
+  addProduct: true,
+  deleteItems: true,
+  deleteAffiliate: true,
+  authorizeAffiliate: true,
+  pauseAffiliate: true,
 }).partial();
 
 // Self-profile update schema - ONLY allows username updates (for security)
