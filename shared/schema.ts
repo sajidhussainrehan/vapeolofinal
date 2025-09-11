@@ -72,6 +72,20 @@ export const contactMessages = pgTable("contact_messages", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
+// Homepage content table
+export const homepageContent = pgTable("homepage_content", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  section: text("section").notNull().unique(), // 'hero', 'about', 'testimonials', 'contact'
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  description: text("description"),
+  buttonText: text("button_text"),
+  buttonUrl: text("button_url"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   approvedAffiliates: many(affiliates),
@@ -146,6 +160,25 @@ export const insertContactMessageSchema = createInsertSchema(contactMessages).pi
   message: true,
 });
 
+export const insertHomepageContentSchema = createInsertSchema(homepageContent).pick({
+  section: true,
+  title: true,
+  subtitle: true,
+  description: true,
+  buttonText: true,
+  buttonUrl: true,
+  active: true,
+});
+
+export const updateHomepageContentSchema = createInsertSchema(homepageContent).pick({
+  title: true,
+  subtitle: true,
+  description: true,
+  buttonText: true,
+  buttonUrl: true,
+  active: true,
+}).partial();
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -161,6 +194,10 @@ export type InsertSale = z.infer<typeof insertSaleSchema>;
 
 export type ContactMessage = typeof contactMessages.$inferSelect;
 export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
+
+export type HomepageContent = typeof homepageContent.$inferSelect;
+export type InsertHomepageContent = z.infer<typeof insertHomepageContentSchema>;
+export type UpdateHomepageContent = z.infer<typeof updateHomepageContentSchema>;
 
 // Utility functions for inventory calculations
 export function getAvailableInventory(product: Product): number {

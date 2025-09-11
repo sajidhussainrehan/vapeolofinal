@@ -4,6 +4,7 @@ import {
   products, 
   sales, 
   contactMessages,
+  homepageContent,
   type User, 
   type InsertUser,
   type Affiliate,
@@ -13,7 +14,10 @@ import {
   type Sale,
   type InsertSale,
   type ContactMessage,
-  type InsertContactMessage
+  type InsertContactMessage,
+  type HomepageContent,
+  type InsertHomepageContent,
+  type UpdateHomepageContent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, count } from "drizzle-orm";
@@ -49,6 +53,12 @@ export interface IStorage {
   createContactMessage(message: InsertContactMessage): Promise<ContactMessage>;
   getContactMessages(): Promise<ContactMessage[]>;
   updateContactMessageStatus(id: string, status: string): Promise<ContactMessage>;
+  
+  // Homepage Content
+  getHomepageContent(): Promise<HomepageContent[]>;
+  getHomepageContentBySection(section: string): Promise<HomepageContent | undefined>;
+  createHomepageContent(content: InsertHomepageContent): Promise<HomepageContent>;
+  updateHomepageContentBySection(section: string, content: UpdateHomepageContent): Promise<HomepageContent>;
   
   // Dashboard Stats
   getDashboardStats(): Promise<{
@@ -217,6 +227,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(contactMessages.id, id))
       .returning();
     return message;
+  }
+
+  // Homepage Content
+  async getHomepageContent(): Promise<HomepageContent[]> {
+    return await db.select().from(homepageContent).orderBy(desc(homepageContent.createdAt));
+  }
+
+  async getHomepageContentBySection(section: string): Promise<HomepageContent | undefined> {
+    const [content] = await db.select().from(homepageContent).where(eq(homepageContent.section, section));
+    return content || undefined;
+  }
+
+  async createHomepageContent(content: InsertHomepageContent): Promise<HomepageContent> {
+    const [newContent] = await db
+      .insert(homepageContent)
+      .values(content)
+      .returning();
+    return newContent;
+  }
+
+  async updateHomepageContentBySection(section: string, content: UpdateHomepageContent): Promise<HomepageContent> {
+    const updateData = {
+      ...content,
+      updatedAt: sql`now()`
+    };
+
+    const [updatedContent] = await db
+      .update(homepageContent)
+      .set(updateData)
+      .where(eq(homepageContent.section, section))
+      .returning();
+    return updatedContent;
   }
 
   // Dashboard Stats
