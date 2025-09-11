@@ -711,9 +711,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const defaultContent = [
         {
           section: "hero",
-          title: "VAPEOLO: Donde la experiencia y el sabor se fusionan",
-          subtitle: "15 años diseñando los mejores cigarrillos electrónicos del mercado",
-          description: "Más de 25 sabores • Hasta 20,000 puffs • Envíos a todo el país",
+          title: "VAPEOLO:",
+          subtitle: "Donde la experiencia y el sabor se fusionan",
+          description: "15 años diseñando los mejores cigarrillos electrónicos del mercado",
           buttonText: "Ver Productos",
           buttonUrl: "#productos",
           active: true
@@ -721,8 +721,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           section: "about",
           title: "¿Quiénes somos?",
-          subtitle: "",
-          description: "VAPEOLO es distribuidora oficial de LAVIE, una marca con más de 15 años de innovación en diseño y fabricación de vapes. Cada dispositivo combine tecnología avanzada, sabores intensos y una experiencia premium. Nuestra misión: redefinir el vapeo en Latinoamérica",
+          subtitle: "VAPEOLO es distribuidora oficial de LAVIE, una marca con más de 15 años de innovación en diseño y fabricación de vapes.",
+          description: "Nuestra misión: redefinir el vapeo en Latinoamérica",
           buttonText: "",
           buttonUrl: "",
           active: true
