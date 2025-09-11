@@ -12,10 +12,12 @@ import {
   DollarSign,
   Layout,
   User,
-  Settings
+  Settings,
+  TestTube
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import AdminProfileDropdown from "@/components/AdminProfileDropdown";
+import { toast } from "@/hooks/use-toast";
 
 export default function AdminDashboard() {
   const { user, logout, token } = useAuth();
@@ -138,6 +140,59 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* VAPEOLO Toast System Test Section */}
+        <Card className="bg-gray-900 border-purple-500/20 mb-8">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center">
+              <TestTube className="w-5 h-5 mr-2 text-purple-400" />
+              VAPEOLO Toast System Test
+            </CardTitle>
+            <CardDescription className="text-gray-400">
+              Test all toast notification types with VAPEOLO branding
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+              <Button
+                className="bg-purple-600 hover:bg-purple-700"
+                onClick={() => toast.success("¡Operación Exitosa!", "La acción se completó correctamente con el estilo VAPEOLO.")}
+                data-testid="button-toast-success"
+              >
+                Success Toast
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => toast.error("Error Detectado", "Algo salió mal. Por favor intenta nuevamente.")}
+                data-testid="button-toast-error"
+              >
+                Error Toast
+              </Button>
+              <Button
+                className="bg-yellow-600 hover:bg-yellow-700"
+                onClick={() => toast.warning("Advertencia Importante", "Revisa esta información antes de continuar.")}
+                data-testid="button-toast-warning"
+              >
+                Warning Toast
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => toast.info("Información Útil", "Datos importantes sobre tu cuenta VAPEOLO.")}
+                data-testid="button-toast-info"
+              >
+                Info Toast
+              </Button>
+              <Button
+                variant="outline"
+                className="border-purple-400 text-purple-400 hover:bg-purple-600 hover:text-white"
+                onClick={() => toast({ title: "VAPEOLO Notification", description: "Toast por defecto con el branding completo.", variant: "default" })}
+                data-testid="button-toast-default"
+              >
+                Default Toast
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-6">

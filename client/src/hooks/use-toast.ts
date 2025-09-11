@@ -6,7 +6,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -166,6 +166,39 @@ function toast({ ...props }: Toast) {
     dismiss,
     update,
   }
+}
+
+// VAPEOLO Toast Convenience Methods
+toast.success = (title: string, description?: string) => {
+  return toast({
+    title,
+    description,
+    variant: "success",
+  })
+}
+
+toast.error = (title: string, description?: string) => {
+  return toast({
+    title,
+    description,
+    variant: "error",
+  })
+}
+
+toast.warning = (title: string, description?: string) => {
+  return toast({
+    title,
+    description,
+    variant: "warning",
+  })
+}
+
+toast.info = (title: string, description?: string) => {
+  return toast({
+    title,
+    description,
+    variant: "info",
+  })
 }
 
 function useToast() {
