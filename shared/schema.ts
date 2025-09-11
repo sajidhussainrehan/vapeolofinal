@@ -40,6 +40,9 @@ export const products = pgTable("products", {
   description: text("description"),
   popular: boolean("popular").notNull().default(false),
   active: boolean("active").notNull().default(true),
+  inventory: integer("inventory").notNull().default(0), // Total stock quantity
+  reservedInventory: integer("reserved_inventory").notNull().default(0), // Items reserved in orders
+  lowStockThreshold: integer("low_stock_threshold").notNull().default(10), // Reorder point
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
@@ -120,6 +123,9 @@ export const insertProductSchema = createInsertSchema(products).pick({
   description: true,
   popular: true,
   active: true,
+  inventory: true,
+  reservedInventory: true,
+  lowStockThreshold: true,
 });
 
 export const insertSaleSchema = createInsertSchema(sales).pick({
@@ -155,3 +161,23 @@ export type InsertSale = z.infer<typeof insertSaleSchema>;
 
 export type ContactMessage = typeof contactMessages.$inferSelect;
 export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
+
+// Utility functions for inventory calculations
+export function getAvailableInventory(product: Product): number {
+  return Math.max(0, product.inventory - product.reservedInventory);
+}
+
+export function isOutOfStock(product: Product): boolean {
+  return getAvailableInventory(product) === 0;
+}
+
+export function isLowStock(product: Product): boolean {
+  return getAvailableInventory(product) <= product.lowStockThreshold && getAvailableInventory(product) > 0;
+}
+
+export function getStockStatus(product: Product): 'out_of_stock' | 'low_stock' | 'in_stock' {
+  const available = getAvailableInventory(product);
+  if (available === 0) return 'out_of_stock';
+  if (available <= product.lowStockThreshold) return 'low_stock';
+  return 'in_stock';
+}

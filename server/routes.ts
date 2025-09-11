@@ -409,6 +409,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed hardcoded products from ProductStore.tsx
+  app.post("/api/admin/products/seed", requireAuth, async (req, res) => {
+    try {
+      // Hardcoded product data from ProductStore.tsx
+      const hardcodedProducts = [
+        {
+          id: 'cyber',
+          name: 'CYBER',
+          puffs: '20,000 Puffs',
+          price: 'Q240',
+          sabores: ['Mango Ice', 'Blueberry', 'Cola', 'Grape', 'Sandía Chill'],
+          popular: true,
+          description: 'Vape premium CYBER con 20,000 puffs y una gran variedad de sabores refrescantes. Ideal para sesiones prolongadas con calidad superior.'
+        },
+        {
+          id: 'cube',
+          name: 'CUBE',
+          puffs: '20,000 Puffs',
+          price: 'Q220',
+          sabores: ['Strawberry Kiwi', 'Menta', 'Cola', 'Frutas Tropicales', 'Piña'],
+          description: 'Vape CUBE con diseño moderno y 20,000 puffs. Perfecto equilibrio entre sabor y duración con sabores únicos.'
+        },
+        {
+          id: 'energy',
+          name: 'ENERGY',
+          puffs: '15,000 Puffs',
+          price: 'Q170',
+          sabores: ['Blue Razz', 'Mango Chill', 'Fresa', 'Cereza', 'Uva'],
+          description: 'Vape ENERGY con 15,000 puffs y sabores intensos. Diseñado para darte la energía que necesitas durante todo el día.'
+        },
+        {
+          id: 'torch',
+          name: 'TORCH',
+          puffs: '6,000 Puffs',
+          price: 'Q125',
+          sabores: ['Menta', 'Banana Ice', 'Frutos Rojos', 'Chicle', 'Limonada'],
+          description: 'Vape TORCH compacto con 6,000 puffs. Perfecto para llevarlo contigo con sabores frescos y vibrantes.'
+        },
+        {
+          id: 'bar',
+          name: 'BAR',
+          puffs: '800 Puffs',
+          price: 'Q65',
+          sabores: ['Sandía', 'Uva', 'Cola', 'Mango', 'Piña Colada'],
+          description: 'Vape BAR económico con 800 puffs. Ideal para quienes buscan una opción accesible sin comprometer la calidad del sabor.'
+        }
+      ];
+
+      // Transform data to match database schema
+      const transformedProducts = hardcodedProducts.map(product => ({
+        name: product.name,
+        puffs: parseInt(product.puffs.replace(/[,\s]/g, '').replace('Puffs', '')), // Convert "20,000 Puffs" to 20000
+        price: product.price.replace('Q', ''), // Convert "Q240" to "240.00"
+        image: null, // Will be handled separately
+        sabores: product.sabores,
+        description: product.description,
+        popular: product.popular || false,
+        active: true,
+        inventory: 100, // Default inventory
+        reservedInventory: 0, // Default reserved
+        lowStockThreshold: 10 // Default threshold
+      }));
+
+      // Check for existing products to avoid duplicates
+      const existingProducts = await storage.getProducts();
+      const existingNames = new Set(existingProducts.map(p => p.name));
+
+      let createdCount = 0;
+      let skippedCount = 0;
+      const results = [];
+
+      for (const productData of transformedProducts) {
+        if (existingNames.has(productData.name)) {
+          skippedCount++;
+          results.push({
+            name: productData.name,
+            status: 'skipped',
+            reason: 'Product already exists'
+          });
+        } else {
+          try {
+            const validatedData = insertProductSchema.parse(productData);
+            const product = await storage.createProduct(validatedData);
+            createdCount++;
+            results.push({
+              name: product.name,
+              status: 'created',
+              id: product.id
+            });
+          } catch (error: any) {
+            results.push({
+              name: productData.name,
+              status: 'error',
+              reason: error.message
+            });
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Seeding completed: ${createdCount} products created, ${skippedCount} skipped`,
+        data: {
+          created: createdCount,
+          skipped: skippedCount,
+          total: transformedProducts.length,
+          details: results
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Sales management
   app.get("/api/admin/sales", requireAuth, async (req, res) => {
     try {
