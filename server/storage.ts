@@ -5,6 +5,7 @@ import {
   sales, 
   contactMessages,
   homepageContent,
+  productFlavors,
   type User, 
   type InsertUser,
   type Affiliate,
@@ -18,7 +19,12 @@ import {
   type HomepageContent,
   type InsertHomepageContent,
   type UpdateHomepageContent,
-  getAvailableInventory
+  type ProductFlavor,
+  type InsertProductFlavor,
+  type UpdateProductFlavor,
+  getAvailableInventory,
+  getProductTotalAvailableInventory,
+  isProductOutOfStock
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, count } from "drizzle-orm";
@@ -60,6 +66,13 @@ export interface IStorage {
   getHomepageContentBySection(section: string): Promise<HomepageContent | undefined>;
   createHomepageContent(content: InsertHomepageContent): Promise<HomepageContent>;
   updateHomepageContentBySection(section: string, content: UpdateHomepageContent): Promise<HomepageContent>;
+  
+  // Product Flavors
+  getProductFlavors(productId: string): Promise<ProductFlavor[]>;
+  getProductFlavor(flavorId: string): Promise<ProductFlavor | undefined>;
+  createProductFlavor(flavor: InsertProductFlavor): Promise<ProductFlavor>;
+  updateProductFlavor(flavorId: string, flavor: UpdateProductFlavor): Promise<ProductFlavor>;
+  deleteProductFlavor(flavorId: string): Promise<void>;
   
   // Dashboard Stats
   getDashboardStats(): Promise<{
@@ -183,6 +196,46 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, id))
       .returning();
     return updatedProduct;
+  }
+
+  // Product Flavors
+  async getProductFlavors(productId: string): Promise<ProductFlavor[]> {
+    return await db
+      .select()
+      .from(productFlavors)
+      .where(eq(productFlavors.productId, productId))
+      .orderBy(desc(productFlavors.createdAt));
+  }
+
+  async getProductFlavor(flavorId: string): Promise<ProductFlavor | undefined> {
+    const [flavor] = await db
+      .select()
+      .from(productFlavors)
+      .where(eq(productFlavors.id, flavorId));
+    return flavor || undefined;
+  }
+
+  async createProductFlavor(flavor: InsertProductFlavor): Promise<ProductFlavor> {
+    const [newFlavor] = await db
+      .insert(productFlavors)
+      .values(flavor)
+      .returning();
+    return newFlavor;
+  }
+
+  async updateProductFlavor(flavorId: string, flavor: UpdateProductFlavor): Promise<ProductFlavor> {
+    const [updatedFlavor] = await db
+      .update(productFlavors)
+      .set(flavor)
+      .where(eq(productFlavors.id, flavorId))
+      .returning();
+    return updatedFlavor;
+  }
+
+  async deleteProductFlavor(flavorId: string): Promise<void> {
+    await db
+      .delete(productFlavors)
+      .where(eq(productFlavors.id, flavorId));
   }
 
   // Sales

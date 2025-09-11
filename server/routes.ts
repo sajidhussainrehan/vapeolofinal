@@ -2,6 +2,9 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { products } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
@@ -11,7 +14,9 @@ import {
   insertSaleSchema, 
   insertContactMessageSchema,
   insertUserSchema,
-  insertHomepageContentSchema
+  insertHomepageContentSchema,
+  insertProductFlavorSchema,
+  updateProductFlavorSchema
 } from "@shared/schema";
 
 // JWT_SECRET configuration
@@ -189,11 +194,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get active products (public)
+  // Get active products with flavors (public)
   app.get("/api/products", async (req, res) => {
     try {
-      const products = await storage.getActiveProducts();
-      res.json({ success: true, data: products });
+      // Get all active products (basic filtering)
+      const allActiveProducts = await db.select().from(products).where(eq(products.active, true));
+      
+      // Get flavors for each product and apply appropriate filtering
+      const productsWithFlavors = [];
+      
+      for (const product of allActiveProducts) {
+        const flavors = await storage.getProductFlavors(product.id);
+        const activeFlavors = flavors.filter(flavor => flavor.active);
+        
+        // If product has no flavors, include it for backward compatibility
+        // This ensures products without flavors still show up until migration is complete
+        if (flavors.length === 0) {
+          productsWithFlavors.push({
+            ...product,
+            flavors: []
+          });
+        } else {
+          // Only include products that have at least one flavor with available inventory
+          const availableFlavors = activeFlavors.filter(flavor => {
+            const available = Math.max(0, flavor.inventory - flavor.reservedInventory);
+            return available > 0;
+          });
+          
+          if (availableFlavors.length > 0) {
+            productsWithFlavors.push({
+              ...product,
+              flavors: activeFlavors // Include all active flavors, not just available ones for display
+            });
+          }
+        }
+      }
+      res.json({ success: true, data: productsWithFlavors });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -395,7 +431,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/products", requireAuth, async (req, res) => {
     try {
       const products = await storage.getProducts();
-      res.json({ success: true, data: products });
+      
+      // Include flavors for each product for admin view
+      const productsWithFlavors = [];
+      
+      for (const product of products) {
+        const flavors = await storage.getProductFlavors(product.id);
+        productsWithFlavors.push({
+          ...product,
+          flavors: flavors // Include all flavors for admin view
+        });
+      }
+      
+      res.json({ success: true, data: productsWithFlavors });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -597,6 +645,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
           details: results
         }
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Product Flavor management
+  app.get("/api/admin/products/:productId/flavors", requireAuth, async (req, res) => {
+    try {
+      const { productId } = req.params;
+      
+      // Verify product exists
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      const flavors = await storage.getProductFlavors(productId);
+      res.json({ success: true, data: flavors });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/products/:productId/flavors", requireAuth, async (req, res) => {
+    try {
+      const { productId } = req.params;
+      
+      // Verify product exists
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      // Validate and create flavor
+      const flavorData = { ...req.body, productId };
+      const validatedData = insertProductFlavorSchema.parse(flavorData);
+      
+      // Validate inventory constraints
+      if (typeof validatedData.reservedInventory === 'number' && typeof validatedData.inventory === 'number') {
+        if (validatedData.reservedInventory > validatedData.inventory) {
+          return res.status(400).json({ error: "Reserved inventory cannot exceed total inventory" });
+        }
+      }
+      
+      const flavor = await storage.createProductFlavor(validatedData);
+      res.json({ success: true, data: flavor });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/flavors/:flavorId", requireAuth, async (req, res) => {
+    try {
+      const { flavorId } = req.params;
+      
+      // Verify flavor exists
+      const existingFlavor = await storage.getProductFlavor(flavorId);
+      if (!existingFlavor) {
+        return res.status(404).json({ error: "Flavor not found" });
+      }
+      
+      // Validate update data
+      const validatedData = updateProductFlavorSchema.parse(req.body);
+      
+      // Validate inventory constraints if they are being updated
+      if ('inventory' in validatedData && 'reservedInventory' in validatedData) {
+        if (typeof validatedData.reservedInventory === 'number' && typeof validatedData.inventory === 'number') {
+          if (validatedData.reservedInventory > validatedData.inventory) {
+            return res.status(400).json({ error: "Reserved inventory cannot exceed total inventory" });
+          }
+        }
+      } else if ('reservedInventory' in validatedData) {
+        if (typeof validatedData.reservedInventory === 'number') {
+          if (validatedData.reservedInventory > existingFlavor.inventory) {
+            return res.status(400).json({ error: "Reserved inventory cannot exceed total inventory" });
+          }
+        }
+      } else if ('inventory' in validatedData) {
+        if (typeof validatedData.inventory === 'number') {
+          if (validatedData.inventory < existingFlavor.reservedInventory) {
+            return res.status(400).json({ error: "Inventory cannot be less than currently reserved inventory" });
+          }
+        }
+      }
+      
+      const flavor = await storage.updateProductFlavor(flavorId, validatedData);
+      res.json({ success: true, data: flavor });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/flavors/:flavorId", requireAuth, async (req, res) => {
+    try {
+      const { flavorId } = req.params;
+      
+      // Verify flavor exists
+      const existingFlavor = await storage.getProductFlavor(flavorId);
+      if (!existingFlavor) {
+        return res.status(404).json({ error: "Flavor not found" });
+      }
+      
+      await storage.deleteProductFlavor(flavorId);
+      res.json({ success: true, message: "Flavor deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
