@@ -43,12 +43,24 @@ function transformProduct(product: Product & { flavors?: ProductFlavor[] }) {
     ? flavors.filter(flavor => flavor.active && !isFlavorOutOfStock(flavor))
     : flavors.filter(flavor => flavor.active); // For legacy, all active flavors are available
 
+  // Handle image paths - support both uploaded images and legacy static imports
+  let imageSrc = '';
+  if (product.image) {
+    if (product.image.startsWith('products/')) {
+      // This is an uploaded image, serve from uploads directory
+      imageSrc = `/uploads/${product.image}`;
+    } else {
+      // This is a legacy image, use the mapping
+      imageSrc = imageMapping[product.image] || '';
+    }
+  }
+
   return {
     id: product.id,
     name: product.name,
     puffs: `${product.puffs.toLocaleString()} Puffs`, // Format number with commas
     price: `Q${Math.round(parseFloat(product.price))}`, // Add Q prefix and round
-    image: product.image ? imageMapping[product.image] : '',
+    image: imageSrc,
     sabores: product.sabores, // Keep for backward compatibility
     flavors: flavors, // New flavor structure with inventory
     availableFlavors: availableFlavors, // Only flavors that can be selected

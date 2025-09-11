@@ -8,6 +8,9 @@ import { products, productFlavors } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { 
   insertAffiliateSchema, 
   insertProductSchema, 
@@ -124,9 +127,46 @@ function clearFailedAttempts(email: string): void {
   failedAttempts.delete(email.toLowerCase());
 }
 
+// Multer configuration for file uploads
+const storage_config = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(process.cwd(), 'public', 'uploads', 'products');
+    // Ensure directory exists
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename with timestamp and original extension
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({
+  storage: storage_config,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow only image files
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPEG, PNG, WebP) are allowed'));
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware for JSON parsing
   app.use(express.json());
+  
+  // Serve static files from uploads directory
+  app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
   // Rate limiting for public routes
   const publicRateLimit = rateLimit({
@@ -266,6 +306,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes (require authentication)
+  
+  // Image upload endpoint for products
+  app.post("/api/admin/products/upload-image", requireAuth, upload.single('image'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+      
+      // Return the relative path that can be stored in database
+      const imagePath = `products/${req.file.filename}`;
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          imagePath: imagePath,
+          filename: req.file.filename,
+          originalName: req.file.originalname,
+          size: req.file.size
+        } 
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to upload image" });
+    }
+  });
   
   // Admin login (with rate limiting)
   app.post("/api/admin/login", loginRateLimit, async (req, res) => {

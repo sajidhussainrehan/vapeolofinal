@@ -28,7 +28,10 @@ import {
   Settings,
   Trash2,
   Save,
-  X
+  X,
+  Upload,
+  ImageIcon,
+  Loader2
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +56,11 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'stock' | 'created'>('name');
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  
+  // Image upload state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
   
   // Flavor management state
   const [flavorDialogOpen, setFlavorDialogOpen] = useState(false);
@@ -274,6 +282,56 @@ export default function AdminProducts() {
       lowStockThreshold: "10",
     });
     setFormErrors({});
+    setSelectedFile(null);
+    setImagePreview("");
+  };
+
+  // File upload handling functions
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!selectedFile) return null;
+    
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+      
+      const response = await fetch('/api/admin/products/upload-image', {
+        method: 'POST',
+        headers: {
+          Authorization: token || "",
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+      
+      const result = await response.json();
+      return result.data.imagePath;
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo subir la imagen",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleOpenDialog = (product?: Product) => {
@@ -292,6 +350,13 @@ export default function AdminProducts() {
         reservedInventory: product.reservedInventory?.toString() || "0",
         lowStockThreshold: product.lowStockThreshold?.toString() || "10",
       });
+      // Set image preview for existing product
+      if (product.image) {
+        setImagePreview(`/uploads/${product.image}`);
+      } else {
+        setImagePreview("");
+      }
+      setSelectedFile(null);
     } else {
       setEditingProduct(null);
       resetForm();
@@ -327,11 +392,23 @@ export default function AdminProducts() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
+    }
+    
+    // Upload image if a new file is selected
+    let imagePath = formData.image;
+    if (selectedFile) {
+      const uploadedPath = await uploadImage();
+      if (uploadedPath) {
+        imagePath = uploadedPath;
+      } else {
+        // Upload failed, don't continue
+        return;
+      }
     }
     
     // Validate and process sabores array
@@ -344,7 +421,7 @@ export default function AdminProducts() {
       name: formData.name,
       puffs: parseInt(formData.puffs),
       price: parseFloat(formData.price).toFixed(2), // Ensure proper decimal format
-      image: formData.image || undefined,
+      image: imagePath || undefined,
       sabores: saboresArray,
       description: formData.description || undefined,
       popular: formData.popular,
@@ -769,15 +846,67 @@ export default function AdminProducts() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="image">URL de Imagen (opcional)</Label>
-                    <Input
-                      id="image"
-                      value={formData.image}
-                      onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-                      placeholder="https://..."
-                      className="bg-gray-800 border-gray-700"
-                      data-testid="input-product-image"
-                    />
+                    <Label htmlFor="image">Imagen del Producto (opcional)</Label>
+                    <div className="space-y-3">
+                      {/* File upload input */}
+                      <div className="flex items-center gap-3">
+                        <Input
+                          id="image"
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleFileSelect}
+                          className="bg-gray-800 border-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                          data-testid="input-product-image"
+                        />
+                        {isUploading && (
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Subiendo...
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Image preview */}
+                      {imagePreview && (
+                        <div className="relative">
+                          <Label className="text-sm text-gray-400">Vista previa:</Label>
+                          <div className="mt-2 relative w-32 h-32 border-2 border-gray-600 rounded-lg overflow-hidden bg-gray-800">
+                            <img
+                              src={imagePreview}
+                              alt="Vista previa"
+                              className="w-full h-full object-cover"
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="destructive"
+                              className="absolute top-1 right-1 w-6 h-6"
+                              onClick={() => {
+                                setSelectedFile(null);
+                                setImagePreview("");
+                                // Clear the file input
+                                const fileInput = document.getElementById('image') as HTMLInputElement;
+                                if (fileInput) fileInput.value = '';
+                              }}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Current image indicator for editing */}
+                      {editingProduct && formData.image && !selectedFile && !imagePreview && (
+                        <div className="text-sm text-gray-400 flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4" />
+                          Imagen actual: {formData.image}
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-gray-500">
+                        Formatos soportados: JPG, PNG, WebP. Tamaño máximo: 5MB
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -899,11 +1028,17 @@ export default function AdminProducts() {
                 <div className="flex gap-3 pt-4">
                   <Button
                     type="submit"
-                    disabled={createProductMutation.isPending || updateProductMutation.isPending}
+                    disabled={createProductMutation.isPending || updateProductMutation.isPending || isUploading}
                     className="bg-purple-600 hover:bg-purple-700"
                     data-testid="button-save-product"
                   >
-                    {editingProduct ? "Actualizar" : "Crear"} Producto
+                    {isUploading ? 
+                      "Subiendo imagen..." :
+                      (createProductMutation.isPending || updateProductMutation.isPending ? 
+                        "Guardando..." : 
+                        `${editingProduct ? "Actualizar" : "Crear"} Producto`
+                      )
+                    }
                   </Button>
                   <Button
                     type="button"
