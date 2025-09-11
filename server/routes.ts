@@ -241,6 +241,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   };
 
+  // Permission-based access control middleware
+  const requirePermission = (...permissions: Array<keyof Pick<User, 'editInventory' | 'addProduct' | 'deleteItems' | 'deleteAffiliate' | 'authorizeAffiliate' | 'pauseAffiliate'>>) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      // Admin role bypasses all permission checks
+      if (authReq.user.role === 'admin') {
+        return next();
+      }
+      
+      // Check if user has all required permissions
+      const hasAllPermissions = permissions.every(permission => {
+        return authReq.user[permission] === true;
+      });
+      
+      if (!hasAllPermissions) {
+        return res.status(403).json({ error: "Insufficient permissions for this operation" });
+      }
+      
+      next();
+    };
+  };
+
   // Public routes (frontend)
   
   // Create affiliate application (with rate limiting)
@@ -427,7 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes (require authentication)
   
   // Image upload endpoint for products
-  app.post("/api/admin/products/upload-image", requireAuth, upload.single('image'), async (req, res) => {
+  app.post("/api/admin/products/upload-image", requireAuth, requirePermission('addProduct'), upload.single('image'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });
@@ -475,7 +501,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         data: { 
-          user: { id: user.id, username: user.username, role: user.role },
+          user: { 
+            id: user.id, 
+            username: user.username, 
+            role: user.role,
+            editInventory: user.editInventory,
+            addProduct: user.addProduct,
+            deleteItems: user.deleteItems,
+            deleteAffiliate: user.deleteAffiliate,
+            authorizeAffiliate: user.authorizeAffiliate,
+            pauseAffiliate: user.pauseAffiliate
+          },
           token: `Bearer ${token}`
         }
       });
@@ -784,6 +820,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid status value" });
       }
       
+      // Check permissions based on status being set
+      const authReq = req as AuthenticatedRequest;
+      if (authReq.user.role !== 'admin') {
+        if (status === 'approved' && !authReq.user.authorizeAffiliate) {
+          return res.status(403).json({ error: "Insufficient permissions to authorize affiliates" });
+        }
+        if (status === 'standby' && !authReq.user.pauseAffiliate) {
+          return res.status(403).json({ error: "Insufficient permissions to pause affiliates" });
+        }
+      }
+      
       const affiliate = await storage.updateAffiliateStatus(id, status, (req as any).user.id);
       res.json({ success: true, data: affiliate });
     } catch (error: any) {
@@ -832,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete affiliate (admin only)
-  app.delete("/api/admin/affiliates/:id", requireAuth, async (req, res) => {
+  app.delete("/api/admin/affiliates/:id", requireAuth, requirePermission('deleteAffiliate'), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -876,7 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/products", requireAuth, async (req, res) => {
+  app.post("/api/admin/products", requireAuth, requirePermission('addProduct'), async (req, res) => {
     try {
       const validatedData = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(validatedData);
@@ -886,7 +933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/products/:id", requireAuth, async (req, res) => {
+  app.patch("/api/admin/products/:id", requireAuth, requirePermission('editInventory'), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -901,6 +948,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ error: "No valid fields to update" });
+      }
+      
+      // Check editInventory permission if any inventory-related fields are being updated
+      const inventoryFields = ['inventory', 'reservedInventory', 'lowStockThreshold'];
+      const isUpdatingInventory = inventoryFields.some(field => field in updateData);
+      
+      if (isUpdatingInventory) {
+        const authReq = req as AuthenticatedRequest;
+        // Admin role bypasses permission checks
+        if (authReq.user.role !== 'admin' && !authReq.user.editInventory) {
+          return res.status(403).json({ error: "Insufficient permissions to edit inventory" });
+        }
       }
       
       // Validate inventory fields if they are being updated
@@ -955,7 +1014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Seed hardcoded products from ProductStore.tsx
-  app.post("/api/admin/products/seed", requireAuth, async (req, res) => {
+  app.post("/api/admin/products/seed", requireAuth, requirePermission('addProduct'), async (req, res) => {
     try {
       // Hardcoded product data from ProductStore.tsx
       const hardcodedProducts = [
@@ -1095,7 +1154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/products/:productId/flavors", requireAuth, async (req, res) => {
+  app.post("/api/admin/products/:productId/flavors", requireAuth, requirePermission('editInventory'), async (req, res) => {
     try {
       const { productId } = req.params;
       
@@ -1123,7 +1182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/flavors/:flavorId", requireAuth, async (req, res) => {
+  app.patch("/api/admin/flavors/:flavorId", requireAuth, requirePermission('editInventory'), async (req, res) => {
     try {
       const { flavorId } = req.params;
       
@@ -1164,7 +1223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/admin/flavors/:flavorId", requireAuth, async (req, res) => {
+  app.delete("/api/admin/flavors/:flavorId", requireAuth, requirePermission('deleteItems'), async (req, res) => {
     try {
       const { flavorId } = req.params;
       
@@ -1182,7 +1241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Migration endpoint - Convert sabores to product flavors
-  app.post("/api/admin/migrate-flavors", requireAuth, async (req, res) => {
+  app.post("/api/admin/migrate-flavors", requireAuth, requirePermission('editInventory'), async (req, res) => {
     try {
       console.log("Starting sabores migration...");
       

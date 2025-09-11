@@ -5,6 +5,12 @@ interface User {
   id: string;
   username: string;
   role: string;
+  editInventory: boolean;
+  addProduct: boolean;
+  deleteItems: boolean;
+  deleteAffiliate: boolean;
+  authorizeAffiliate: boolean;
+  pauseAffiliate: boolean;
 }
 
 interface AuthContextType {

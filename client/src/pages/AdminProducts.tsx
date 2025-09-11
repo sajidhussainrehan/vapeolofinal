@@ -792,17 +792,18 @@ export default function AdminProducts() {
               </SelectContent>
             </Select>
             
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => handleOpenDialog()}
-                  className="bg-purple-600 hover:bg-purple-700"
-                  data-testid="button-add-product"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Agregar Producto
-                </Button>
-              </DialogTrigger>
+            {(user?.role === 'admin' || user?.addProduct) && (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    onClick={() => handleOpenDialog()}
+                    className="bg-purple-600 hover:bg-purple-700"
+                    data-testid="button-add-product"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar Producto
+                  </Button>
+                </DialogTrigger>
             <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
@@ -1057,6 +1058,7 @@ export default function AdminProducts() {
               </form>
             </DialogContent>
           </Dialog>
+            )}
             
             <AdminProfileDropdown />
           </div>
