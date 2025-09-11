@@ -26,6 +26,97 @@ if (process.env.NODE_ENV === "production" && JWT_SECRET === "dev-secret-key") {
   process.exit(1);
 }
 
+// Password validation utilities
+interface PasswordValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+function validatePasswordStrength(password: string): PasswordValidationResult {
+  const errors: string[] = [];
+  
+  // Minimum length
+  if (password.length < 8) {
+    errors.push("La contraseña debe tener al menos 8 caracteres");
+  }
+  
+  // Maximum length for security
+  if (password.length > 100) {
+    errors.push("La contraseña no puede tener más de 100 caracteres");
+  }
+  
+  // At least one uppercase letter
+  if (!/[A-Z]/.test(password)) {
+    errors.push("La contraseña debe contener al menos una letra mayúscula");
+  }
+  
+  // At least one lowercase letter
+  if (!/[a-z]/.test(password)) {
+    errors.push("La contraseña debe contener al menos una letra minúscula");
+  }
+  
+  // At least one number
+  if (!/[0-9]/.test(password)) {
+    errors.push("La contraseña debe contener al menos un número");
+  }
+  
+  // At least one special character
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push("La contraseña debe contener al menos un carácter especial");
+  }
+  
+  // No common patterns
+  const commonPatterns = [
+    /123456/, /password/, /admin/, /qwerty/, /letmein/, /welcome/,
+    /monkey/, /dragon/, /pass/, /master/, /login/, /vapeolo/
+  ];
+  
+  for (const pattern of commonPatterns) {
+    if (pattern.test(password.toLowerCase())) {
+      errors.push("La contraseña no puede contener patrones comunes");
+      break;
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+// Failed login attempt tracking (in-memory for simplicity, in production use Redis or database)
+const failedAttempts = new Map<string, { count: number; lastAttempt: Date }>();
+
+function checkAndUpdateFailedAttempts(email: string): boolean {
+  const key = email.toLowerCase();
+  const attempt = failedAttempts.get(key);
+  const now = new Date();
+  
+  if (!attempt) {
+    failedAttempts.set(key, { count: 1, lastAttempt: now });
+    return true; // First attempt, allow
+  }
+  
+  // Reset counter if last attempt was more than 1 hour ago
+  if (now.getTime() - attempt.lastAttempt.getTime() > 60 * 60 * 1000) {
+    failedAttempts.set(key, { count: 1, lastAttempt: now });
+    return true;
+  }
+  
+  // Block if more than 5 attempts in the last hour
+  if (attempt.count >= 5) {
+    return false;
+  }
+  
+  // Increment counter
+  failedAttempts.set(key, { count: attempt.count + 1, lastAttempt: now });
+  return true;
+}
+
+function clearFailedAttempts(email: string): void {
+  failedAttempts.delete(email.toLowerCase());
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware for JSON parsing
   app.use(express.json());
@@ -152,6 +243,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Email y contraseña son requeridos" });
       }
 
+      // Check for too many failed attempts
+      if (!checkAndUpdateFailedAttempts(email)) {
+        return res.status(429).json({ error: "Demasiados intentos fallidos. Intenta de nuevo en una hora." });
+      }
+
       const affiliate = await storage.getAffiliateByEmail(email);
       
       if (!affiliate) {
@@ -163,13 +259,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!affiliate.password) {
-        return res.status(401).json({ error: "Tu cuenta no tiene contraseña asignada" });
+        return res.status(401).json({ error: "Tu cuenta no tiene contraseña asignada. Contacta al administrador." });
       }
       
       const isValidPassword = await bcrypt.compare(password, affiliate.password);
       if (!isValidPassword) {
         return res.status(401).json({ error: "Credenciales inválidas" });
       }
+      
+      // Clear failed attempts on successful login
+      clearFailedAttempts(email);
       
       res.json({ 
         success: true, 
@@ -221,6 +320,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const affiliate = await storage.updateAffiliateStatus(id, status, (req as any).user.id);
       res.json({ success: true, data: affiliate });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set affiliate password (admin only)
+  app.patch("/api/admin/affiliates/:id/password", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { password } = req.body;
+      
+      if (!password) {
+        return res.status(400).json({ error: "Contraseña es requerida" });
+      }
+      
+      // Validate password strength
+      const validation = validatePasswordStrength(password);
+      if (!validation.isValid) {
+        return res.status(400).json({ 
+          error: "Contraseña no cumple con los requisitos de seguridad",
+          details: validation.errors 
+        });
+      }
+      
+      // Hash password
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      
+      // Update affiliate password
+      const affiliate = await storage.updateAffiliatePassword(id, hashedPassword);
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          id: affiliate.id, 
+          name: affiliate.name, 
+          email: affiliate.email,
+          passwordSet: true 
+        } 
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

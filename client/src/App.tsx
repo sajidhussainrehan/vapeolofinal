@@ -8,6 +8,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { DistributorProvider } from "@/contexts/DistributorContext";
 import CartModal from "@/components/CartModal";
 import Home from "@/pages/Home";
+import Affiliates from "@/pages/Affiliates";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminAffiliates from "@/pages/AdminAffiliates";
@@ -20,6 +21,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/affiliates" component={Affiliates} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/affiliates" component={AdminAffiliates} />

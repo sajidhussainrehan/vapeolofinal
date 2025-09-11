@@ -30,7 +30,7 @@ export default function Header() {
             <a href="#productos" className="text-gray-300 hover:text-purple-400 transition-colors">
               Productos
             </a>
-            <a href="#afiliados" className="text-gray-300 hover:text-purple-400 transition-colors">
+            <a href="/affiliates" className="text-gray-300 hover:text-purple-400 transition-colors">
               Afiliados
             </a>
             <a href="#contacto" className="text-gray-300 hover:text-purple-400 transition-colors">
@@ -86,7 +86,7 @@ export default function Header() {
               <a href="#productos" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
                 Productos
               </a>
-              <a href="#afiliados" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
+              <a href="/affiliates" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
                 Afiliados
               </a>
               <a href="#contacto" className="text-gray-300 hover:text-purple-400 transition-colors py-2">

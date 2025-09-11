@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Minus, Plus, Trash2, ShoppingBag, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import CheckoutForm, { CustomerData } from '@/components/CheckoutForm'
+import { useState } from 'react'
 
 export default function CartModal() {
   const { 
@@ -17,20 +19,72 @@ export default function CartModal() {
     closeCart 
   } = useCart()
 
+  const [showCheckoutForm, setShowCheckoutForm] = useState(false)
+
   const total = getCartTotal()
   const itemCount = getCartCount()
 
   const handleCheckout = () => {
-    alert(`¡Gracias por tu compra! Total: Q${total.toFixed(2)}\n\nSerás redirigido a WhatsApp para completar tu pedido.`)
-    // Here you would typically integrate with a payment provider or WhatsApp API
-    const message = `¡Hola! Quiero hacer un pedido:\n\n${cart.map(item => 
-      `• ${item.name} (${item.puffs})\n  Sabor: ${item.flavor}\n  Cantidad: ${item.quantity}\n  Subtotal: Q${(parseFloat(item.price.replace('Q', '')) * item.quantity).toFixed(2)}`
-    ).join('\n\n')}\n\nTotal del pedido: Q${total.toFixed(2)}`
+    setShowCheckoutForm(true)
+  }
+
+  const handleFormSubmit = (customerData: CustomerData) => {
+    console.log('Submitted checkout form.', customerData);
     
-    const whatsappUrl = `https://wa.me/50242015748?text=${encodeURIComponent(message)}`
-    window.open(whatsappUrl, '_blank')
-    clearCart()
-    closeCart()
+    // Create detailed message with customer information and products
+    const customerInfo = `*INFORMACIÓN DEL CLIENTE:*
+Nombre: ${customerData.firstName} ${customerData.lastName}
+Teléfono: ${customerData.phone}
+Dirección: ${customerData.address}
+Departamento: ${customerData.department}
+
+*PRODUCTOS:*`
+    
+    const productsInfo = cart.map(item => 
+      `• ${item.name} (${item.puffs})
+  Sabor: ${item.flavor}
+  Cantidad: ${item.quantity}
+  Subtotal: Q${(parseFloat(item.price.replace('Q', '')) * item.quantity).toFixed(2)}`
+    ).join('\n\n')
+
+    const orderSummary = `
+*RESUMEN DEL PEDIDO:*
+Total: Q${total.toFixed(2)}
+Envío: GRATIS
+
+¡Confirma tu pedido para proceder con la entrega!`
+
+    const fullMessage = `¡Hola! Quiero hacer un pedido:\n\n${customerInfo}\n\n${productsInfo}${orderSummary}`
+    
+    const whatsappUrl = `https://wa.me/50242015748?text=${encodeURIComponent(fullMessage)}`
+    
+    console.log('Opening WhatsApp URL:', whatsappUrl);
+    
+    try {
+      const newWindow = window.open(whatsappUrl, '_blank');
+      console.log('Window.open result:', newWindow);
+      
+      if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+        // Popup was blocked, fallback to direct navigation
+        console.warn('Popup blocked, redirecting to WhatsApp directly');
+        window.location.href = whatsappUrl;
+      }
+    } catch (error) {
+      console.error('Error opening WhatsApp:', error);
+      // Fallback to direct navigation
+      window.location.href = whatsappUrl;
+    }
+    
+    // Clear cart and close modal
+    setTimeout(() => {
+      clearCart()
+      closeCart()
+      setShowCheckoutForm(false)
+    }, 1000);
+  }
+
+  const handleBackToCart = () => {
+    setShowCheckoutForm(false)
   }
 
   return (
@@ -44,7 +98,13 @@ export default function CartModal() {
         </DialogHeader>
 
         <div className="space-y-4">
-          {cart.length === 0 ? (
+          {showCheckoutForm && cart.length > 0 ? (
+            <CheckoutForm 
+              total={total}
+              onSubmit={handleFormSubmit}
+              onBack={handleBackToCart}
+            />
+          ) : cart.length === 0 ? (
             <div className="text-center py-12">
               <ShoppingBag className="mx-auto h-16 w-16 text-gray-400 mb-4" />
               <p className="text-gray-400 text-lg">Tu carrito está vacío</p>

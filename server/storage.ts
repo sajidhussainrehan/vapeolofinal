@@ -30,6 +30,7 @@ export interface IStorage {
   getAffiliate(id: string): Promise<Affiliate | undefined>;
   getAffiliateByEmail(email: string): Promise<Affiliate | undefined>;
   updateAffiliateStatus(id: string, status: string, approvedBy?: string): Promise<Affiliate>;
+  updateAffiliatePassword(id: string, hashedPassword: string): Promise<Affiliate>;
   
   // Products
   getProducts(): Promise<Product[]>;
@@ -125,6 +126,15 @@ export class DatabaseStorage implements IStorage {
     const [affiliate] = await db
       .update(affiliates)
       .set(updateData)
+      .where(eq(affiliates.id, id))
+      .returning();
+    return affiliate;
+  }
+
+  async updateAffiliatePassword(id: string, hashedPassword: string): Promise<Affiliate> {
+    const [affiliate] = await db
+      .update(affiliates)
+      .set({ password: hashedPassword })
       .where(eq(affiliates.id, id))
       .returning();
     return affiliate;

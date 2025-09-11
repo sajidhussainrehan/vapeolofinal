@@ -4,8 +4,11 @@ import { Star, ShoppingCart } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
 import FlavorSelector from '@/components/FlavorSelector'
-import cubeImage from '@assets/generated_images/CUBE_vape_product_image_0a8cd099.png'
-import energyImage from '@assets/generated_images/ENERGY_vape_product_image_9b09255c.png'
+import barImage from '@assets/BAR (1)_1757558165026.png'
+import cubeImage from '@assets/CUBE_1757558165026.png'
+import cyberImage from '@assets/CYBER_1757558165027.png'
+import energyImage from '@assets/ENERGY_1757558165028.png'
+import torchImage from '@assets/TORCH (1)_1757558165028.png'
 
 export default function ProductStore() {
   const { getCartCount } = useCart()
@@ -17,7 +20,7 @@ export default function ProductStore() {
       name: 'CYBER',
       puffs: '20,000 Puffs',
       price: 'Q240',
-      image: '/placeholder-vape-cyber.png', // Using placeholder since image generation failed
+      image: cyberImage,
       sabores: ['Mango Ice', 'Blueberry', 'Cola', 'Grape', 'Sandía Chill'],
       popular: true
     },
@@ -42,7 +45,7 @@ export default function ProductStore() {
       name: 'TORCH',
       puffs: '6,000 Puffs',
       price: 'Q125', 
-      image: '/placeholder-vape-torch.png', // Using placeholder since image generation failed
+      image: torchImage,
       sabores: ['Menta', 'Banana Ice', 'Frutos Rojos', 'Chicle', 'Limonada']
     },
     {
@@ -50,7 +53,7 @@ export default function ProductStore() {
       name: 'BAR',
       puffs: '800 Puffs',
       price: 'Q65',
-      image: '/placeholder-vape-bar.png', // Using placeholder since image generation failed 
+      image: barImage,
       sabores: ['Sandía', 'Uva', 'Cola', 'Mango', 'Piña Colada']
     }
   ]
@@ -63,7 +66,7 @@ export default function ProductStore() {
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
             <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Tienda Online
+              Ordena Online
             </span>
           </h2>
           <p className="text-xl text-gray-300 mb-8">
@@ -88,17 +91,11 @@ export default function ProductStore() {
                 )}
                 
                 <div className="aspect-square bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center p-8">
-                  {product.image.startsWith('/placeholder') ? (
-                    <div className="w-32 h-32 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">{product.name}</span>
-                    </div>
-                  ) : (
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  )}
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="max-w-full max-h-full object-contain"
+                  />
                 </div>
               </div>
 
