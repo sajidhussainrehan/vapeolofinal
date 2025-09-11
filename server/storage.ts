@@ -38,6 +38,7 @@ export interface IStorage {
   listUsers(): Promise<User[]>;
   updateUser(id: string, updates: UpdateUser): Promise<User>;
   setUserPassword(id: string, hashedPassword: string): Promise<User>;
+  deleteUser(id: string): Promise<void>;
   
   // Affiliates
   createAffiliate(affiliate: InsertAffiliate): Promise<Affiliate>;
@@ -131,6 +132,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db
+      .delete(users)
+      .where(eq(users.id, id));
   }
 
   // Affiliates

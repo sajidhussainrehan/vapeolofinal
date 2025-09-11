@@ -739,6 +739,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete user endpoint
+  app.delete("/api/admin/users/:id", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUserId = (req as AuthenticatedRequest).user.id;
+      
+      // Prevent self-deletion
+      if (id === currentUserId) {
+        return res.status(400).json({ error: "No puedes eliminar tu propia cuenta" });
+      }
+      
+      // Check if user exists
+      const userToDelete = await storage.getUser(id);
+      if (!userToDelete) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      
+      // Count active admin users
+      const allUsers = await storage.listUsers();
+      const activeAdmins = allUsers.filter(user => user.role === 'admin' && user.active);
+      
+      // Prevent deleting the last active admin
+      if (userToDelete.role === 'admin' && userToDelete.active && activeAdmins.length <= 1) {
+        return res.status(400).json({ error: "No puedes eliminar el último administrador activo" });
+      }
+      
+      // Delete user
+      await storage.deleteUser(id);
+      
+      res.json({ success: true, data: { message: "Usuario eliminado exitosamente" } });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Distributor login (with rate limiting)
   app.post("/api/auth/distributor/login", loginRateLimit, async (req, res) => {
     try {

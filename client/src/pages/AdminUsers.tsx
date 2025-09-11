@@ -62,6 +62,7 @@ export default function AdminUsers() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
 
   // Redirect if not logged in or not admin
@@ -199,6 +200,49 @@ export default function AdminUsers() {
     },
   });
 
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => apiRequest(`/api/admin/users/${userId}`, "DELETE"),
+    onSuccess: () => {
+      toast({
+        title: "Usuario eliminado",
+        description: "El usuario ha sido eliminado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setIsDeleteDialogOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Error al eliminar el usuario",
+      });
+    },
+  });
+
+  // Toggle user status mutation
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: ({ userId, active }: { userId: string; active: boolean }) => 
+      apiRequest(`/api/admin/users/${userId}`, "PATCH", { active }),
+    onSuccess: (_, variables) => {
+      toast({
+        title: variables.active ? "Usuario activado" : "Usuario pausado",
+        description: variables.active 
+          ? "El usuario ha sido activado exitosamente" 
+          : "El usuario ha sido pausado exitosamente",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Error al cambiar el estado del usuario",
+      });
+    },
+  });
+
   const onCreateSubmit = (data: InsertUser) => {
     createUserMutation.mutate(data);
   };
@@ -235,6 +279,24 @@ export default function AdminUsers() {
     setSelectedUser(user);
     passwordForm.reset();
     setIsPasswordDialogOpen(true);
+  };
+
+  const handleDeleteUser = (user: UserType) => {
+    setSelectedUser(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleToggleUserStatus = (user: UserType) => {
+    toggleUserStatusMutation.mutate({ 
+      userId: user.id, 
+      active: !user.active 
+    });
+  };
+
+  const confirmDeleteUser = () => {
+    if (selectedUser) {
+      deleteUserMutation.mutate(selectedUser.id);
+    }
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -481,6 +543,33 @@ export default function AdminUsers() {
                               >
                                 <Lock className="mr-2 h-4 w-4" />
                                 Restablecer Contraseña
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleToggleUserStatus(user)}
+                                className="text-white hover:bg-gray-700 cursor-pointer"
+                                disabled={toggleUserStatusMutation.isPending}
+                                data-testid={`menu-toggle-status-${user.id}`}
+                              >
+                                {user.active ? (
+                                  <>
+                                    <Pause className="mr-2 h-4 w-4 text-yellow-400" />
+                                    Pausar Usuario
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="mr-2 h-4 w-4 text-green-400" />
+                                    Activar Usuario
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteUser(user)}
+                                className="text-red-400 hover:bg-red-900/20 cursor-pointer"
+                                disabled={deleteUserMutation.isPending}
+                                data-testid={`menu-delete-${user.id}`}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar Usuario
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1194,6 +1283,68 @@ export default function AdminUsers() {
                 </div>
               </form>
             </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="bg-gray-900 border-gray-700 text-white">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-red-400">
+                <Trash2 className="w-5 h-5 mr-2" />
+                Confirmar Eliminación
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Esta acción no se puede deshacer. ¿Estás seguro de que quieres eliminar este usuario?
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedUser && (
+              <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-4 my-4">
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-white">
+                      {selectedUser.username}
+                    </h4>
+                    <p className="text-sm text-red-300">
+                      Rol: {selectedUser.role === 'admin' ? 'Administrador' : 'Ventas'}
+                    </p>
+                    <p className="text-sm text-red-300">
+                      Estado: {selectedUser.active ? 'Activo' : 'Inactivo'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setSelectedUser(null);
+                }}
+                className="border-gray-700 text-gray-400 hover:bg-gray-800"
+                data-testid="button-delete-cancel"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmDeleteUser}
+                disabled={deleteUserMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                data-testid="button-delete-confirm"
+              >
+                {deleteUserMutation.isPending ? "Eliminando..." : "Eliminar Usuario"}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
