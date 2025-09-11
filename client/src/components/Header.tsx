@@ -4,7 +4,7 @@ import { Menu, ShoppingCart, User, X } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
 import { useLocation } from 'wouter'
-import vapeologyLogo from '@assets/VAPEOLO LOGO PNG_1757560375792.png'
+import vapeologyLogo from '@assets/VAPEOLO(com)LOGO PNG_1757600785076.png'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -21,7 +21,7 @@ export default function Header() {
             <img 
               src={vapeologyLogo} 
               alt="VAPEOLO" 
-              className="h-12 w-auto"
+              className="h-14 w-auto"
               data-testid="img-vapeolo-logo"
             />
           </div>
