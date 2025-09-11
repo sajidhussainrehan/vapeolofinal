@@ -13,6 +13,7 @@ import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AdminAffiliates from "@/pages/AdminAffiliates";
 import AdminProducts from "@/pages/AdminProducts";
+import AdminHomepage from "@/pages/AdminHomepage";
 import DistributorLogin from "@/pages/DistributorLogin";
 import DistributorDashboard from "@/pages/DistributorDashboard";
 import NotFound from "@/pages/not-found";
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/affiliates" component={AdminAffiliates} />
       <Route path="/admin/products" component={AdminProducts} />
+      <Route path="/admin/homepage" component={AdminHomepage} />
       <Route path="/distributor/login" component={DistributorLogin} />
       <Route path="/distributor/dashboard" component={DistributorDashboard} />
       {/* Fallback to 404 */}

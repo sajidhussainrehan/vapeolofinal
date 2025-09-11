@@ -10,7 +10,8 @@ import {
   insertProductSchema, 
   insertSaleSchema, 
   insertContactMessageSchema,
-  insertUserSchema 
+  insertUserSchema,
+  insertHomepageContentSchema
 } from "@shared/schema";
 
 // JWT_SECRET configuration
@@ -635,6 +636,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const message = await storage.updateContactMessageStatus(id, status);
       res.json({ success: true, data: message });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Homepage content management
+  app.get("/api/admin/homepage-content", requireAuth, async (req, res) => {
+    try {
+      const content = await storage.getHomepageContent();
+      res.json({ success: true, data: content });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/homepage-content/:section", requireAuth, async (req, res) => {
+    try {
+      const { section } = req.params;
+      
+      // Validate section
+      if (!["hero", "about", "testimonials", "contact"].includes(section)) {
+        return res.status(400).json({ error: "Invalid section name" });
+      }
+      
+      // Validate update data - allow partial updates for homepage content
+      const allowedFields = ['title', 'subtitle', 'description', 'buttonText', 'buttonUrl', 'active'];
+      const updateData = Object.keys(req.body)
+        .filter(key => allowedFields.includes(key))
+        .reduce((obj: any, key) => {
+          obj[key] = req.body[key];
+          return obj;
+        }, {});
+      
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+      
+      const content = await storage.updateHomepageContentBySection(section, updateData);
+      res.json({ success: true, data: content });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Seed homepage content from hardcoded components (DEVELOPMENT ONLY)
+  app.post("/api/admin/homepage-content/seed", requireAuth, async (req, res) => {
+    try {
+      const defaultContent = [
+        {
+          section: "hero",
+          title: "VAPEOLO: Donde la experiencia y el sabor se fusionan",
+          subtitle: "15 años diseñando los mejores cigarrillos electrónicos del mercado",
+          description: "Más de 25 sabores • Hasta 20,000 puffs • Envíos a todo el país",
+          buttonText: "Ver Productos",
+          buttonUrl: "#productos",
+          active: true
+        },
+        {
+          section: "about",
+          title: "¿Quiénes somos?",
+          subtitle: "",
+          description: "VAPEOLO es distribuidora oficial de LAVIE, una marca con más de 15 años de innovación en diseño y fabricación de vapes. Cada dispositivo combine tecnología avanzada, sabores intensos y una experiencia premium. Nuestra misión: redefinir el vapeo en Latinoamérica",
+          buttonText: "",
+          buttonUrl: "",
+          active: true
+        },
+        {
+          section: "testimonials",
+          title: "Testimonios",
+          subtitle: "Lo que dicen nuestros clientes y socios",
+          description: "",
+          buttonText: "",
+          buttonUrl: "",
+          active: true
+        },
+        {
+          section: "contact",
+          title: "Contacto",
+          subtitle: "Estamos aquí para ayudarte",
+          description: "",
+          buttonText: "",
+          buttonUrl: "",
+          active: true
+        }
+      ];
+
+      const createdContent = [];
+      for (const content of defaultContent) {
+        // Check if content already exists for this section
+        const existing = await storage.getHomepageContentBySection(content.section);
+        if (!existing) {
+          const created = await storage.createHomepageContent(content);
+          createdContent.push(created);
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Seeded ${createdContent.length} homepage content sections`,
+        data: createdContent
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
