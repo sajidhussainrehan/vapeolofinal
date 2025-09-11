@@ -390,7 +390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       
       // Validate product update data - allow partial updates
-      const allowedFields = ['name', 'puffs', 'price', 'image', 'sabores', 'description', 'popular', 'active'];
+      const allowedFields = ['name', 'puffs', 'price', 'image', 'sabores', 'description', 'popular', 'active', 'inventory', 'reservedInventory', 'lowStockThreshold'];
       const updateData = Object.keys(req.body)
         .filter(key => allowedFields.includes(key))
         .reduce((obj: any, key) => {
@@ -400,6 +400,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ error: "No valid fields to update" });
+      }
+      
+      // Validate inventory fields if they are being updated
+      if ('inventory' in updateData) {
+        if (!Number.isInteger(updateData.inventory) || updateData.inventory < 0) {
+          return res.status(400).json({ error: "Inventory must be a non-negative integer" });
+        }
+      }
+      
+      if ('reservedInventory' in updateData) {
+        if (!Number.isInteger(updateData.reservedInventory) || updateData.reservedInventory < 0) {
+          return res.status(400).json({ error: "Reserved inventory must be a non-negative integer" });
+        }
+      }
+      
+      if ('lowStockThreshold' in updateData) {
+        if (!Number.isInteger(updateData.lowStockThreshold) || updateData.lowStockThreshold < 0) {
+          return res.status(400).json({ error: "Low stock threshold must be a non-negative integer" });
+        }
+      }
+      
+      // Additional validation: reservedInventory cannot exceed inventory
+      if ('inventory' in updateData && 'reservedInventory' in updateData) {
+        if (updateData.reservedInventory > updateData.inventory) {
+          return res.status(400).json({ error: "Reserved inventory cannot exceed total inventory" });
+        }
+      } else if ('reservedInventory' in updateData) {
+        // If only updating reservedInventory, get current inventory from database
+        const currentProduct = await storage.getProduct(id);
+        if (!currentProduct) {
+          return res.status(404).json({ error: "Product not found" });
+        }
+        if (updateData.reservedInventory > currentProduct.inventory) {
+          return res.status(400).json({ error: "Reserved inventory cannot exceed total inventory" });
+        }
+      } else if ('inventory' in updateData) {
+        // If only updating inventory, ensure it's not less than current reservedInventory
+        const currentProduct = await storage.getProduct(id);
+        if (!currentProduct) {
+          return res.status(404).json({ error: "Product not found" });
+        }
+        if (updateData.inventory < currentProduct.reservedInventory) {
+          return res.status(400).json({ error: "Inventory cannot be less than currently reserved inventory" });
+        }
       }
       
       const product = await storage.updateProduct(id, updateData);
@@ -457,12 +501,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
+      // Image mapping for products
+      const imageMapping: Record<string, string> = {
+        'CYBER': 'CYBER_1757558165027.png',
+        'CUBE': 'CUBE_1757558165026.png', 
+        'ENERGY': 'ENERGY_1757558165028.png',
+        'TORCH': 'TORCH (1)_1757558165028.png',
+        'BAR': 'BAR (1)_1757558165026.png'
+      };
+
       // Transform data to match database schema
       const transformedProducts = hardcodedProducts.map(product => ({
         name: product.name,
         puffs: parseInt(product.puffs.replace(/[,\s]/g, '').replace('Puffs', '')), // Convert "20,000 Puffs" to 20000
         price: product.price.replace('Q', ''), // Convert "Q240" to "240.00"
-        image: null, // Will be handled separately
+        image: imageMapping[product.name] || null, // Map product name to image filename
         sabores: product.sabores,
         description: product.description,
         popular: product.popular || false,

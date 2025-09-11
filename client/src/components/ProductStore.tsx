@@ -1,62 +1,52 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Star, ShoppingCart } from 'lucide-react'
+import { Star, ShoppingCart, Loader2, AlertCircle } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
 import FlavorSelector from '@/components/FlavorSelector'
+import { useQuery } from '@tanstack/react-query'
+import type { Product } from '@shared/schema'
 import barImage from '@assets/BAR (1)_1757558165026.png'
 import cubeImage from '@assets/CUBE_1757558165026.png'
 import cyberImage from '@assets/CYBER_1757558165027.png'
 import energyImage from '@assets/ENERGY_1757558165028.png'
 import torchImage from '@assets/TORCH (1)_1757558165028.png'
 
+// Image mapping for products from database
+const imageMapping: Record<string, string> = {
+  'CYBER_1757558165027.png': cyberImage,
+  'CUBE_1757558165026.png': cubeImage,
+  'ENERGY_1757558165028.png': energyImage,
+  'TORCH (1)_1757558165028.png': torchImage,
+  'BAR (1)_1757558165026.png': barImage,
+};
+
+// Transform database product for display
+function transformProduct(product: Product) {
+  return {
+    id: product.id,
+    name: product.name,
+    puffs: `${product.puffs.toLocaleString()} Puffs`, // Format number with commas
+    price: `Q${Math.round(parseFloat(product.price))}`, // Add Q prefix and round
+    image: product.image ? imageMapping[product.image] : '',
+    sabores: product.sabores,
+    popular: product.popular,
+    originalPrice: parseFloat(product.price) // Keep original for calculations
+  };
+}
+
 export default function ProductStore() {
   const { getCartCount } = useCart()
   const { distributor } = useDistributor()
 
-  const products = [
-    {
-      id: 'cyber',
-      name: 'CYBER',
-      puffs: '20,000 Puffs',
-      price: 'Q240',
-      image: cyberImage,
-      sabores: ['Mango Ice', 'Blueberry', 'Cola', 'Grape', 'Sandía Chill'],
-      popular: true
-    },
-    {
-      id: 'cube',
-      name: 'CUBE', 
-      puffs: '20,000 Puffs',
-      price: 'Q220',
-      image: cubeImage,
-      sabores: ['Strawberry Kiwi', 'Menta', 'Cola', 'Frutas Tropicales', 'Piña']
-    },
-    {
-      id: 'energy',
-      name: 'ENERGY',
-      puffs: '15,000 Puffs', 
-      price: 'Q170',
-      image: energyImage,
-      sabores: ['Blue Razz', 'Mango Chill', 'Fresa', 'Cereza', 'Uva']
-    },
-    {
-      id: 'torch',
-      name: 'TORCH',
-      puffs: '6,000 Puffs',
-      price: 'Q125', 
-      image: torchImage,
-      sabores: ['Menta', 'Banana Ice', 'Frutos Rojos', 'Chicle', 'Limonada']
-    },
-    {
-      id: 'bar',
-      name: 'BAR',
-      puffs: '800 Puffs',
-      price: 'Q65',
-      image: barImage,
-      sabores: ['Sandía', 'Uva', 'Cola', 'Mango', 'Piña Colada']
-    }
-  ]
+  // Fetch products from API
+  const { data: productsResponse, isLoading, error } = useQuery<{success: boolean; data: Product[]}>({
+    queryKey: ['/api/products'],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Transform products for display
+  const products = productsResponse?.data?.map((product: Product) => transformProduct(product)) || [];
 
 
   return (
@@ -74,7 +64,34 @@ export default function ProductStore() {
           </p>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-20" data-testid="loading-products">
+            <Loader2 className="h-12 w-12 animate-spin text-purple-400 mb-4" />
+            <p className="text-xl text-gray-300">Cargando productos...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="flex flex-col items-center justify-center py-20" data-testid="error-products">
+            <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
+            <p className="text-xl text-red-300 mb-2">Error al cargar productos</p>
+            <p className="text-gray-400">Por favor, intenta recargar la página</p>
+          </div>
+        )}
+
+        {/* No Products State */}
+        {!isLoading && !error && products.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20" data-testid="no-products">
+            <ShoppingCart className="h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-xl text-gray-300 mb-2">No hay productos disponibles</p>
+            <p className="text-gray-400">Vuelve pronto para ver nuestros productos</p>
+          </div>
+        )}
+
         {/* Products Grid */}
+        {!isLoading && !error && products.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {products.map((product) => (
             <Card 
@@ -91,11 +108,18 @@ export default function ProductStore() {
                 )}
                 
                 <div className="aspect-square bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center p-8">
-                  <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="max-w-full max-h-full object-contain"
-                  />
+                  {product.image ? (
+                    <img 
+                      src={product.image} 
+                      alt={product.name}
+                      className="max-w-full max-h-full object-contain"
+                      data-testid={`img-product-${product.id}`}
+                    />
+                  ) : (
+                    <div className="w-32 h-32 bg-gray-700/50 rounded-lg flex items-center justify-center">
+                      <ShoppingCart className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -112,7 +136,7 @@ export default function ProductStore() {
                           Público: {product.price}
                         </div>
                         <div className="text-2xl font-black text-green-400">
-                          Q{(parseFloat(product.price.replace('Q', '')) * (1 - parseFloat(distributor.discount) / 100)).toFixed(0)}
+                          Q{(product.originalPrice * (1 - parseFloat(distributor.discount) / 100)).toFixed(0)}
                         </div>
                         <div className="text-xs text-purple-300">
                           {distributor.discount}% desc.
@@ -128,7 +152,7 @@ export default function ProductStore() {
                 <div className="mb-6">
                   <p className="text-gray-400 text-sm mb-2">Sabores disponibles:</p>
                   <div className="flex flex-wrap gap-1">
-                    {product.sabores.slice(0, 3).map((sabor, idx) => (
+                    {product.sabores.slice(0, 3).map((sabor: string, idx: number) => (
                       <Badge key={idx} variant="outline" className="text-xs border-purple-500/30 text-purple-300">
                         {sabor}
                       </Badge>
@@ -146,6 +170,7 @@ export default function ProductStore() {
             </Card>
           ))}
         </div>
+        )}
 
         {/* Cart Summary */}
         {getCartCount() > 0 && (
