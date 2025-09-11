@@ -105,7 +105,6 @@ export default function ContactSection() {
       {/* Background Elements */}
       <div className="absolute top-10 right-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl"></div>
       <div className="absolute bottom-10 left-10 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl"></div>
-      
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -249,9 +248,7 @@ export default function ContactSection() {
                     <div>✓ Transferencia</div>
                     <div>✓ Contra entrega</div>
                   </div>
-                  <p className="text-xs text-purple-300 mt-2">
-                    * Contra entrega mínimo Q50
-                  </p>
+                  <p className="text-xs text-purple-300 mt-2">* Contra entrega minimo de Q200 o costo de Q35 por envio </p>
                 </div>
               </CardContent>
             </Card>
@@ -259,5 +256,5 @@ export default function ContactSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
