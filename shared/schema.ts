@@ -363,6 +363,19 @@ export interface NavigationContent {
   };
 }
 
+export interface HeroFeature {
+  icon: string;
+  text: string;
+}
+
+export interface HeroContent {
+  features: HeroFeature[];
+  buttons: {
+    primary: string;
+    secondary: string;
+  };
+}
+
 export interface HeroFeatures {
   flavors: string;
   puffs: string;

@@ -1,48 +1,30 @@
 import { Button } from '@/components/ui/button'
-import { ArrowRight, ShoppingCart, Users } from 'lucide-react'
+import { ArrowRight, ShoppingCart, Users, Loader2 } from 'lucide-react'
 import { useLocation } from 'wouter'
 import { useQuery } from '@tanstack/react-query'
-import { HomepageContentResponse, type HeroFeatures } from '@shared/schema'
+import { HomepageContentResponse, type HeroContent, type HeroFeature } from '@shared/schema'
 import heroImage from '@assets/generated_images/Hero_banner_lifestyle_image_3d61fbb5.png'
 
 export default function HeroSection() {
   const [, setLocation] = useLocation()
 
-  // Fetch homepage content with graceful fallback
-  const { data: homepageContent } = useQuery<HomepageContentResponse>({
+  // Fetch homepage content for hero section
+  const { data: homepageContent, isLoading } = useQuery<HomepageContentResponse>({
     queryKey: ['/api/homepage-content'],
     staleTime: 5 * 60 * 1000, // 5 minutes cache
   })
 
-  // Default hardcoded content as fallback
-  const defaultContent = {
-    title: 'VAPEOLO:',
-    subtitle: 'Donde la experiencia y el sabor se fusionan',
-    description: '15 años diseñando los mejores cigarrillos electrónicos del mercado',
-    buttonText: 'Ver Productos',
-    buttonSecondaryText: 'Unirme como Afiliado'
-  }
-
-  const defaultFeatures = {
-    flavors: 'Más de 25 sabores',
-    puffs: 'Hasta 20,000 puffs', 
-    shipping: 'Envíos a todo el país'
-  }
-
-  // Use database content if available, otherwise fallback to default
-  const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.hero) || defaultContent
-  
-  // Parse features from content JSON field or use defaults
-  let features = defaultFeatures
+  // Parse hero content from database
+  let heroData: HeroContent | null = null;
   try {
-    if (content && 'content' in content && content.content) {
-      const parsedContent = JSON.parse(content.content) as HeroFeatures
-      features = parsedContent
+    if (homepageContent && 'success' in homepageContent && homepageContent.data?.hero?.content) {
+      heroData = JSON.parse(homepageContent.data.hero.content);
     }
-  } catch {
-    // Fallback to default if JSON parsing fails
-    features = defaultFeatures
+  } catch (error) {
+    console.error('Error parsing hero content:', error);
   }
+
+  const content = homepageContent && 'success' in homepageContent ? homepageContent.data?.hero : null;
 
   const scrollToProducts = () => {
     const productosSection = document.getElementById('productos')
@@ -54,6 +36,59 @@ export default function HeroSection() {
   const navigateToAffiliates = () => {
     setLocation('/affiliates')
   }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <section id="inicio" className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0">
+          <img 
+            src={heroImage} 
+            alt="LAVIE Vapes Hero" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-purple-900/50 to-blue-900/30"></div>
+        </div>
+        <div className="relative z-10 text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-purple-400 mx-auto mb-4" />
+          <p className="text-gray-300 text-xl">Cargando contenido principal...</p>
+        </div>
+      </section>
+    );
+  }
+
+  // Show error state if no content is available
+  if (!content || !heroData) {
+    return (
+      <section id="inicio" className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0">
+          <img 
+            src={heroImage} 
+            alt="LAVIE Vapes Hero" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-purple-900/50 to-blue-900/30"></div>
+        </div>
+        <div className="relative z-10 text-center">
+          <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
+            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+              VAPEOLO
+            </span>
+          </h1>
+          <p className="text-xl text-gray-300 mb-8">
+            El contenido principal no está disponible en este momento.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="bg-gradient-to-r from-purple-600 to-blue-600"
+          >
+            Recargar página
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="inicio" className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image with Gradient Overlay */}
@@ -66,10 +101,10 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-purple-900/50 to-blue-900/30"></div>
       </div>
       
-      {/* Content */}
+      {/* Content - COMPLETELY DYNAMIC */}
       <div className="relative z-10 container mx-auto px-4 pt-20">
         <div className="max-w-4xl">
-          {/* Main Heading */}
+          {/* Main Heading - DYNAMIC FROM DATABASE */}
           <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
               {content.title}
@@ -80,28 +115,27 @@ export default function HeroSection() {
             </span>
           </h1>
 
-          {/* Subtitle */}
+          {/* Subtitle - DYNAMIC FROM DATABASE */}
           <p className="text-xl md:text-2xl text-gray-300 mb-8 font-medium">
             {content.description}
           </p>
 
-          {/* Features */}
+          {/* Features - COMPLETELY DYNAMIC FROM DATABASE */}
           <div className="flex flex-wrap gap-6 mb-10 text-lg">
-            <div className="flex items-center text-purple-300">
-              <span className="text-2xl mr-2">🌟</span>
-              {features.flavors}
-            </div>
-            <div className="flex items-center text-blue-300">
-              <span className="text-2xl mr-2">💨</span>
-              {features.puffs}
-            </div>
-            <div className="flex items-center text-green-300">
-              <span className="text-2xl mr-2">🚀</span>
-              {features.shipping}
-            </div>
+            {heroData.features.map((feature: HeroFeature, idx: number) => (
+              <div key={idx} className="flex items-center text-purple-300">
+                <span className="text-2xl mr-2">{feature.icon}</span>
+                <span className={`${
+                  idx === 0 ? 'text-purple-300' : 
+                  idx === 1 ? 'text-blue-300' : 'text-green-300'
+                }`}>
+                  {feature.text}
+                </span>
+              </div>
+            ))}
           </div>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - DYNAMIC FROM DATABASE */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button 
               size="lg" 
@@ -110,7 +144,7 @@ export default function HeroSection() {
               onClick={scrollToProducts}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
-              {content.buttonText || defaultContent.buttonText}
+              {heroData.buttons.primary}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             
@@ -122,7 +156,7 @@ export default function HeroSection() {
               onClick={navigateToAffiliates}
             >
               <Users className="mr-2 h-5 w-5" />
-              {content.buttonSecondaryText || defaultContent.buttonSecondaryText}
+              {heroData.buttons.secondary}
             </Button>
           </div>
         </div>
