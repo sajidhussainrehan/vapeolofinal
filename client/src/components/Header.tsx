@@ -21,7 +21,7 @@ export default function Header() {
             <img 
               src={vapeologyLogo} 
               alt="VAPEOLO" 
-              className="h-8 w-auto"
+              className="h-12 w-auto"
               data-testid="img-vapeolo-logo"
             />
           </div>
