@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { products } from "@shared/schema";
+import { products, productFlavors } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
@@ -751,6 +751,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Flavor deleted successfully" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Migration endpoint - Convert sabores to product flavors
+  app.post("/api/admin/migrate-flavors", requireAuth, async (req, res) => {
+    try {
+      console.log("Starting sabores migration...");
+      
+      // Get all existing products
+      const allProducts = await storage.getProducts();
+      console.log(`Found ${allProducts.length} products to process`);
+      
+      let totalFlavorsCreated = 0;
+      let totalFlavorsSkipped = 0;
+      let productsProcessed = 0;
+      let productsSkipped = 0;
+      const results: Array<{
+        productId: string;
+        productName: string;
+        saboresCount: number;
+        flavorsCreated: number;
+        flavorsSkipped: number;
+        status: 'processed' | 'skipped' | 'error';
+        reason?: string;
+      }> = [];
+
+      for (const product of allProducts) {
+        try {
+          // Check if product already has flavors (idempotent check)
+          const existingFlavors = await storage.getProductFlavors(product.id);
+          
+          if (existingFlavors.length > 0) {
+            // Product already has flavors, skip it
+            productsSkipped++;
+            results.push({
+              productId: product.id,
+              productName: product.name,
+              saboresCount: product.sabores.length,
+              flavorsCreated: 0,
+              flavorsSkipped: existingFlavors.length,
+              status: 'skipped',
+              reason: 'Product already has flavors'
+            });
+            console.log(`Skipping ${product.name} - already has ${existingFlavors.length} flavors`);
+            continue;
+          }
+
+          // Check if product has sabores to migrate
+          if (!product.sabores || product.sabores.length === 0) {
+            productsSkipped++;
+            results.push({
+              productId: product.id,
+              productName: product.name,
+              saboresCount: 0,
+              flavorsCreated: 0,
+              flavorsSkipped: 0,
+              status: 'skipped',
+              reason: 'No sabores to migrate'
+            });
+            console.log(`Skipping ${product.name} - no sabores to migrate`);
+            continue;
+          }
+
+          // Calculate inventory distribution
+          const totalInventory = product.inventory || 0;
+          const flavorCount = product.sabores.length;
+          const baseInventoryPerFlavor = Math.floor(totalInventory / flavorCount);
+          const remainder = totalInventory % flavorCount;
+
+          console.log(`Migrating ${product.name}: ${flavorCount} flavors, ${totalInventory} total inventory`);
+          console.log(`Base inventory per flavor: ${baseInventoryPerFlavor}, remainder: ${remainder}`);
+
+          let productFlavorsCreated = 0;
+          let productFlavorsSkipped = 0;
+
+          // Create flavor entries for each sabor
+          for (let i = 0; i < product.sabores.length; i++) {
+            const flavorName = product.sabores[i].trim();
+            
+            if (!flavorName) {
+              console.log(`Skipping empty flavor name for product ${product.name}`);
+              continue;
+            }
+
+            // Calculate inventory for this flavor (distribute remainder to first N flavors)
+            const flavorInventory = baseInventoryPerFlavor + (i < remainder ? 1 : 0);
+
+            try {
+              // Check if this exact flavor already exists (extra safety)
+              const existingFlavorCheck = await db
+                .select()
+                .from(productFlavors)
+                .where(eq(productFlavors.productId, product.id));
+              
+              const duplicateCheck = existingFlavorCheck.find(f => 
+                f.name.toLowerCase().trim() === flavorName.toLowerCase().trim()
+              );
+
+              if (duplicateCheck) {
+                productFlavorsSkipped++;
+                console.log(`Skipping duplicate flavor ${flavorName} for ${product.name}`);
+                continue;
+              }
+
+              // Create the flavor entry
+              const flavorData = {
+                productId: product.id,
+                name: flavorName,
+                inventory: flavorInventory,
+                reservedInventory: 0,
+                lowStockThreshold: 10,
+                active: true
+              };
+
+              const newFlavor = await storage.createProductFlavor(flavorData);
+              productFlavorsCreated++;
+              console.log(`Created flavor: ${flavorName} with ${flavorInventory} inventory for ${product.name}`);
+            } catch (flavorError: any) {
+              console.error(`Error creating flavor ${flavorName} for ${product.name}:`, flavorError);
+              // Continue with other flavors even if one fails
+            }
+          }
+
+          productsProcessed++;
+          totalFlavorsCreated += productFlavorsCreated;
+          totalFlavorsSkipped += productFlavorsSkipped;
+
+          results.push({
+            productId: product.id,
+            productName: product.name,
+            saboresCount: product.sabores.length,
+            flavorsCreated: productFlavorsCreated,
+            flavorsSkipped: productFlavorsSkipped,
+            status: 'processed'
+          });
+
+          console.log(`Completed ${product.name}: ${productFlavorsCreated} flavors created, ${productFlavorsSkipped} skipped`);
+
+        } catch (productError: any) {
+          console.error(`Error processing product ${product.name}:`, productError);
+          results.push({
+            productId: product.id,
+            productName: product.name,
+            saboresCount: product.sabores?.length || 0,
+            flavorsCreated: 0,
+            flavorsSkipped: 0,
+            status: 'error',
+            reason: productError.message
+          });
+        }
+      }
+
+      const summary = {
+        totalProducts: allProducts.length,
+        productsProcessed,
+        productsSkipped,
+        totalFlavorsCreated,
+        totalFlavorsSkipped,
+        results
+      };
+
+      console.log("Migration completed:", summary);
+
+      res.json({
+        success: true,
+        message: `Migration completed: ${totalFlavorsCreated} flavors created, ${totalFlavorsSkipped} skipped across ${productsProcessed} products`,
+        data: summary
+      });
+
+    } catch (error: any) {
+      console.error("Migration failed:", error);
+      res.status(500).json({ 
+        error: `Migration failed: ${error.message}`,
+        success: false 
+      });
     }
   });
 
