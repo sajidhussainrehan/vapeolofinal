@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight, ShoppingCart, Users } from 'lucide-react'
 import { useLocation } from 'wouter'
 import { useQuery } from '@tanstack/react-query'
-import { HomepageContentResponse } from '@shared/schema'
+import { HomepageContentResponse, type HeroFeatures } from '@shared/schema'
 import heroImage from '@assets/generated_images/Hero_banner_lifestyle_image_3d61fbb5.png'
 
 export default function HeroSection() {
@@ -23,8 +23,26 @@ export default function HeroSection() {
     buttonSecondaryText: 'Unirme como Afiliado'
   }
 
+  const defaultFeatures = {
+    flavors: 'Más de 25 sabores',
+    puffs: 'Hasta 20,000 puffs', 
+    shipping: 'Envíos a todo el país'
+  }
+
   // Use database content if available, otherwise fallback to default
   const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.hero) || defaultContent
+  
+  // Parse features from content JSON field or use defaults
+  let features = defaultFeatures
+  try {
+    if (content && 'content' in content && content.content) {
+      const parsedContent = JSON.parse(content.content) as HeroFeatures
+      features = parsedContent
+    }
+  } catch {
+    // Fallback to default if JSON parsing fails
+    features = defaultFeatures
+  }
 
   const scrollToProducts = () => {
     const productosSection = document.getElementById('productos')
@@ -71,15 +89,15 @@ export default function HeroSection() {
           <div className="flex flex-wrap gap-6 mb-10 text-lg">
             <div className="flex items-center text-purple-300">
               <span className="text-2xl mr-2">🌟</span>
-              Más de 25 sabores
+              {features.flavors}
             </div>
             <div className="flex items-center text-blue-300">
               <span className="text-2xl mr-2">💨</span>
-              Hasta 20,000 puffs
+              {features.puffs}
             </div>
             <div className="flex items-center text-green-300">
               <span className="text-2xl mr-2">🚀</span>
-              Envíos a todo el país
+              {features.shipping}
             </div>
           </div>
 
@@ -104,7 +122,7 @@ export default function HeroSection() {
               onClick={navigateToAffiliates}
             >
               <Users className="mr-2 h-5 w-5" />
-              {defaultContent.buttonSecondaryText}
+              {content.buttonSecondaryText || defaultContent.buttonSecondaryText}
             </Button>
           </div>
         </div>

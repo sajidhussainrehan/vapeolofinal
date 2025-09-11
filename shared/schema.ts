@@ -76,15 +76,23 @@ export const contactMessages = pgTable("contact_messages", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
-// Homepage content table
+// Comprehensive homepage content table
 export const homepageContent = pgTable("homepage_content", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  section: text("section").notNull().unique(), // 'hero', 'about', 'testimonials', 'contact'
-  title: text("title").notNull(),
+  section: text("section").notNull().unique(), // 'navigation', 'hero', 'about', 'products', 'testimonials', 'contact', 'affiliates', 'footer'
+  
+  // Core content fields
+  title: text("title"),
   subtitle: text("subtitle"),
   description: text("description"),
   buttonText: text("button_text"),
+  buttonSecondaryText: text("button_secondary_text"),
   buttonUrl: text("button_url"),
+  
+  // JSON fields for complex content structures
+  content: text("content"), // JSON string for complex nested content
+  
+  // Metadata
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at"),
@@ -194,7 +202,9 @@ export const insertHomepageContentSchema = createInsertSchema(homepageContent).p
   subtitle: true,
   description: true,
   buttonText: true,
+  buttonSecondaryText: true,
   buttonUrl: true,
+  content: true,
   active: true,
 });
 
@@ -203,7 +213,9 @@ export const updateHomepageContentSchema = createInsertSchema(homepageContent).p
   subtitle: true,
   description: true,
   buttonText: true,
+  buttonSecondaryText: true,
   buttonUrl: true,
+  content: true,
   active: true,
 }).partial();
 
@@ -257,11 +269,177 @@ export type ApiResponse<T> = {
 };
 
 export type HomepageContentResponse = ApiResponse<{
+  navigation: HomepageContent | null;
   hero: HomepageContent | null;
   about: HomepageContent | null;
+  products: HomepageContent | null;
   testimonials: HomepageContent | null;
   contact: HomepageContent | null;
+  affiliates: HomepageContent | null;
+  footer: HomepageContent | null;
 }>;
+
+// Content structure definitions for JSON content field
+export interface NavigationContent {
+  logoAlt: string;
+  menuItems: {
+    inicio: string;
+    productos: string;
+    afiliados: string;
+    contacto: string;
+  };
+  buttons: {
+    cart: string;
+    login: string;
+    mobileMenu: string;
+  };
+}
+
+export interface HeroFeatures {
+  flavors: string;
+  puffs: string;
+  shipping: string;
+}
+
+export interface AboutHighlight {
+  title: string;
+  description: string;
+}
+
+export interface AboutStats {
+  experience: string;
+  flavors: string;
+  countries: string;
+}
+
+export interface AboutContent {
+  highlights: AboutHighlight[];
+  stats: AboutStats;
+}
+
+export interface ProductsContent {
+  sectionTitle: string;
+  sectionSubtitle: string;
+  labels: {
+    popular: string;
+    outOfStock: string;
+    lowStock: string;
+    addToCart: string;
+    selectFlavor: string;
+    inStock: string;
+  };
+}
+
+export interface TestimonialsContent {
+  socialPrompt: string;
+  socialPlatforms: {
+    platform: string;
+    handle: string;
+    followers: string;
+  }[];
+  ctaPrompt: string;
+  ctaFeatures: string;
+}
+
+export interface ContactInfo {
+  title: string;
+  description: string;
+  value: string;
+  action: string;
+}
+
+export interface ShippingInfo {
+  title: string;
+  description: string;
+}
+
+export interface ContactContent {
+  formTitle: string;
+  formLabels: {
+    name: string;
+    email: string;
+    message: string;
+  };
+  formPlaceholders: {
+    name: string;
+    email: string;
+    message: string;
+  };
+  formButton: string;
+  contactInfo: ContactInfo[];
+  shippingInfo: ShippingInfo[];
+  paymentMethods: string[];
+  shippingNotice: string;
+}
+
+export interface AffiliateLevel {
+  id: string;
+  name: string;
+  discount: string;
+  minimum: string;
+  features: string[];
+}
+
+export interface AffiliatesContent {
+  sectionSubtitle: string;
+  levels: AffiliateLevel[];
+  formTitle: string;
+  formLabels: {
+    name: string;
+    email: string;
+    phone: string;
+    level: string;
+    message: string;
+  };
+  formPlaceholders: {
+    name: string;
+    email: string;
+    phone: string;
+    message: string;
+  };
+  formButton: string;
+  levelOptions: {
+    label: string;
+    value: string;
+  }[];
+  messages: {
+    success: {
+      title: string;
+      description: string;
+    };
+    error: {
+      title: string;
+      description: string;
+    };
+  };
+}
+
+export interface FooterLinkGroup {
+  name: string;
+  href: string;
+}
+
+export interface FooterContent {
+  brandName: string;
+  brandDescription: string;
+  columns: {
+    products: {
+      title: string;
+      links: FooterLinkGroup[];
+    };
+    company: {
+      title: string;
+      links: FooterLinkGroup[];
+    };
+    support: {
+      title: string;
+      links: FooterLinkGroup[];
+    };
+  };
+  copyright: string;
+  legalLinks: FooterLinkGroup[];
+  ageWarning: string;
+}
 
 // Utility functions for inventory calculations
 

@@ -1166,12 +1166,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { section } = req.params;
       
       // Validate section
-      if (!["hero", "about", "testimonials", "contact"].includes(section)) {
+      const validSections = ["navigation", "hero", "about", "products", "testimonials", "contact", "affiliates", "footer"];
+      if (!validSections.includes(section)) {
         return res.status(400).json({ error: "Invalid section name" });
       }
       
       // Validate update data - allow partial updates for homepage content
-      const allowedFields = ['title', 'subtitle', 'description', 'buttonText', 'buttonUrl', 'active'];
+      const allowedFields = ['title', 'subtitle', 'description', 'buttonText', 'buttonSecondaryText', 'buttonUrl', 'content', 'active'];
       const updateData = Object.keys(req.body)
         .filter(key => allowedFields.includes(key))
         .reduce((obj: any, key) => {
@@ -1195,12 +1196,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const defaultContent = [
         {
+          section: "navigation",
+          title: "Navigation",
+          subtitle: "Header navigation content",
+          description: "",
+          buttonText: "",
+          buttonSecondaryText: "",
+          buttonUrl: "",
+          content: JSON.stringify({
+            logoAlt: "VAPEOLO",
+            menuItems: {
+              inicio: "Inicio",
+              productos: "Productos",
+              afiliados: "Afiliados",
+              contacto: "Contacto"
+            },
+            buttons: {
+              cart: "Carrito",
+              login: "Iniciar Sesión",
+              mobileMenu: "Menú"
+            }
+          }),
+          active: true
+        },
+        {
           section: "hero",
           title: "VAPEOLO:",
           subtitle: "Donde la experiencia y el sabor se fusionan",
           description: "15 años diseñando los mejores cigarrillos electrónicos del mercado",
           buttonText: "Ver Productos",
+          buttonSecondaryText: "Unirme como Afiliado",
           buttonUrl: "#productos",
+          content: JSON.stringify({
+            flavors: "Más de 25 sabores",
+            puffs: "Hasta 20,000 puffs",
+            shipping: "Envíos a todo el país"
+          }),
           active: true
         },
         {
@@ -1209,7 +1240,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subtitle: "VAPEOLO es distribuidora oficial de LAVIE, una marca con más de 15 años de innovación en diseño y fabricación de vapes.",
           description: "Nuestra misión: redefinir el vapeo en Latinoamérica",
           buttonText: "",
+          buttonSecondaryText: "",
           buttonUrl: "",
+          content: JSON.stringify({
+            highlights: [
+              {
+                title: "Presencia en más de 10 países",
+                description: "Distribuyendo experiencias únicas a nivel internacional"
+              },
+              {
+                title: "Baterías de larga duración",
+                description: "Tecnología avanzada para máximo rendimiento"
+              },
+              {
+                title: "Hasta 20,000 puffs por dispositivo",
+                description: "La duración más larga del mercado"
+              },
+              {
+                title: "Garantía de calidad",
+                description: "15 años de experiencia y excelencia comprobada"
+              }
+            ],
+            stats: {
+              experience: "Años de experiencia",
+              flavors: "Sabores disponibles",
+              countries: "Países con presencia"
+            }
+          }),
+          active: true
+        },
+        {
+          section: "products",
+          title: "Productos",
+          subtitle: "Nuestra línea de vapes premium",
+          description: "Descubre nuestra colección de dispositivos de vapeo",
+          buttonText: "",
+          buttonSecondaryText: "",
+          buttonUrl: "",
+          content: JSON.stringify({
+            sectionTitle: "Productos",
+            sectionSubtitle: "Encuentra tu vape perfecto",
+            labels: {
+              popular: "Popular",
+              outOfStock: "Agotado",
+              lowStock: "Pocas unidades",
+              addToCart: "Agregar al carrito",
+              selectFlavor: "Seleccionar sabor",
+              inStock: "En stock"
+            }
+          }),
           active: true
         },
         {
@@ -1218,7 +1297,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subtitle: "Lo que dicen nuestros clientes y socios",
           description: "",
           buttonText: "",
+          buttonSecondaryText: "",
           buttonUrl: "",
+          content: JSON.stringify({
+            socialPrompt: "Síguenos en redes sociales",
+            socialPlatforms: [
+              { platform: "Instagram", handle: "@lavievapes.gt", followers: "45.2K" },
+              { platform: "TikTok", handle: "@lavievapes", followers: "32.8K" },
+              { platform: "Facebook", handle: "LAVIE Vapes Guatemala", followers: "28.1K" }
+            ],
+            ctaPrompt: "Síguenos para contenido exclusivo",
+            ctaFeatures: "📸 Fotos de clientes • 🎥 Reviews y unboxing • 🎁 Promos y giveaways"
+          }),
           active: true
         },
         {
@@ -1227,7 +1317,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subtitle: "Estamos aquí para ayudarte",
           description: "",
           buttonText: "",
+          buttonSecondaryText: "",
           buttonUrl: "",
+          content: JSON.stringify({
+            formTitle: "Envíanos un mensaje",
+            formLabels: {
+              name: "Nombre completo",
+              email: "Email",
+              message: "Mensaje"
+            },
+            formPlaceholders: {
+              name: "Tu nombre",
+              email: "tu@email.com",
+              message: "¿En qué podemos ayudarte?"
+            },
+            formButton: "Enviar mensaje",
+            contactInfo: [
+              {
+                title: "WhatsApp",
+                description: "¿Dudas? Escríbenos al instante",
+                value: "+502 1234-5678",
+                action: "Chatear ahora"
+              },
+              {
+                title: "Email",
+                description: "Contacto comercial",
+                value: "info@lavievapes.gt",
+                action: "Enviar email"
+              },
+              {
+                title: "Ubicación",
+                description: "Envíos a toda Guatemala",
+                value: "Ciudad de Guatemala",
+                action: "Ver cobertura"
+              }
+            ],
+            shippingInfo: [
+              {
+                title: "Envíos a toda Guatemala",
+                description: "Entregas en 24-72h hábiles"
+              },
+              {
+                title: "Múltiples métodos de pago",
+                description: "Tarjeta, transferencia, contra entrega"
+              },
+              {
+                title: "Envío gratis",
+                description: "En compras desde Q200"
+              }
+            ],
+            paymentMethods: ["Tarjeta de crédito", "Transferencia", "Contra entrega"],
+            shippingNotice: "* Contra entrega minimo de Q200 o costo de Q35 por envio"
+          }),
+          active: true
+        },
+        {
+          section: "affiliates",
+          title: "Programa de Afiliación",
+          subtitle: "Gana mientras vapeas - ¡Haz parte de LAVIE!",
+          description: "¿Quieres ganar dinero vendiendo vapes LAVIE? ¡Únete a VAPEOLO!",
+          buttonText: "",
+          buttonSecondaryText: "",
+          buttonUrl: "",
+          content: JSON.stringify({
+            sectionSubtitle: "Únete a nuestro programa de afiliación",
+            levels: [
+              {
+                id: "agente",
+                name: "Agente",
+                discount: "10% - 12%",
+                minimum: "Q500",
+                features: [
+                  "Descuento del 10% al 12%",
+                  "Monto mínimo de compra: Q500",
+                  "Ideal para uso personal",
+                  "Acceso a ofertas exclusivas"
+                ]
+              },
+              {
+                id: "distribuidor",
+                name: "Distribuidor",
+                discount: "25% - 30%",
+                minimum: "Q1,500",
+                features: [
+                  "Descuento del 25% al 30%",
+                  "Monto mínimo de compra: Q1,500",
+                  "Para revendedores activos",
+                  "Herramientas de marketing incluidas"
+                ]
+              },
+              {
+                id: "socio",
+                name: "Socio",
+                discount: "45% - 50%",
+                minimum: "Q3,500",
+                features: [
+                  "Descuento del 45% al 50%",
+                  "Monto mínimo de compra: Q3,500",
+                  "Apoyo comercial personalizado",
+                  "Beneficios exclusivos y prioridad de stock"
+                ]
+              }
+            ],
+            formTitle: "Registrarse como Afiliado",
+            formLabels: {
+              name: "Nombre completo",
+              email: "Email",
+              phone: "Teléfono",
+              level: "Nivel de afiliación deseado",
+              message: "Mensaje (opcional)"
+            },
+            formPlaceholders: {
+              name: "Tu nombre completo",
+              email: "tu@email.com",
+              phone: "+502 1234-5678",
+              message: "Cuéntanos sobre tu experiencia en ventas o por qué quieres ser parte de LAVIE..."
+            },
+            formButton: "Enviar Solicitud",
+            levelOptions: [
+              { label: "Agente (10-12%)", value: "agente" },
+              { label: "Distribuidor (25-30%)", value: "distribuidor" },
+              { label: "Socio (45-50%)", value: "socio" }
+            ],
+            messages: {
+              success: {
+                title: "¡Solicitud enviada!",
+                description: "Nos pondremos en contacto contigo pronto para revisar tu aplicación."
+              },
+              error: {
+                title: "Error",
+                description: "No se pudo enviar la solicitud. Por favor, inténtalo de nuevo."
+              }
+            }
+          }),
+          active: true
+        },
+        {
+          section: "footer",
+          title: "Footer",
+          subtitle: "Footer content and links",
+          description: "",
+          buttonText: "",
+          buttonSecondaryText: "",
+          buttonUrl: "",
+          content: JSON.stringify({
+            brandName: "VAPEOLO",
+            brandDescription: "Distribuidora oficial de LAVIE con 15 años diseñando los mejores cigarrillos electrónicos del mercado. Donde la experiencia y el sabor se fusionan.",
+            columns: {
+              products: {
+                title: "Productos",
+                links: [
+                  { name: "CYBER - 20,000 Puffs", href: "#productos" },
+                  { name: "CUBE - 20,000 Puffs", href: "#productos" },
+                  { name: "ENERGY - 15,000 Puffs", href: "#productos" },
+                  { name: "TORCH - 6,000 Puffs", href: "#productos" },
+                  { name: "BAR - 800 Puffs", href: "#productos" }
+                ]
+              },
+              company: {
+                title: "Empresa",
+                links: [
+                  { name: "Sobre LAVIE", href: "#inicio" },
+                  { name: "Programa de Afiliación", href: "#afiliados" },
+                  { name: "Testimonios", href: "#testimonios" },
+                  { name: "Contacto", href: "#contacto" }
+                ]
+              },
+              support: {
+                title: "Soporte",
+                links: [
+                  { name: "Envíos y devoluciones", href: "#contacto" },
+                  { name: "Métodos de pago", href: "#contacto" },
+                  { name: "Preguntas frecuentes", href: "#contacto" },
+                  { name: "Soporte técnico", href: "#contacto" }
+                ]
+              }
+            },
+            copyright: "© {currentYear} VAPEOLO - Distribuidora oficial LAVIE. Todos los derechos reservados.",
+            legalLinks: [
+              { name: "Términos y Condiciones", href: "#" },
+              { name: "Política de Privacidad", href: "#" },
+              { name: "Política de Cookies", href: "#" }
+            ],
+            ageWarning: "Este sitio web es solo para mayores de 18 años. Los productos de vapeo contienen nicotina, una sustancia química adictiva."
+          }),
           active: true
         }
       ];

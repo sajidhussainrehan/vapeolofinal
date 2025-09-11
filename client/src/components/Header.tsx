@@ -4,6 +4,8 @@ import { Menu, ShoppingCart, User, X } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
 import { useLocation } from 'wouter'
+import { useQuery } from '@tanstack/react-query'
+import { HomepageContentResponse, type NavigationContent } from '@shared/schema'
 import vapeologyLogo from '@assets/VAPEOLO(com)LOGO PNG_1757600785076.png'
 
 export default function Header() {
@@ -11,6 +13,41 @@ export default function Header() {
   const { getCartCount, openCart } = useCart()
   const { distributor } = useDistributor()
   const [, setLocation] = useLocation()
+
+  // Fetch homepage content for navigation
+  const { data: homepageContent } = useQuery<HomepageContentResponse>({
+    queryKey: ['/api/homepage-content'],
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  })
+
+  // Default navigation content as fallback
+  const defaultNavigation = {
+    logoAlt: 'VAPEOLO',
+    menuItems: {
+      inicio: 'Inicio',
+      productos: 'Productos', 
+      afiliados: 'Afiliados',
+      contacto: 'Contacto'
+    },
+    buttons: {
+      cart: 'Carrito',
+      login: 'Iniciar Sesión',
+      mobileMenu: 'Menú'
+    }
+  }
+
+  // Parse navigation content from CMS or use defaults
+  let navigationContent = defaultNavigation
+  try {
+    const navSection = homepageContent && 'success' in homepageContent && homepageContent.data?.navigation
+    if (navSection && 'content' in navSection && navSection.content) {
+      const parsedContent = JSON.parse(navSection.content) as NavigationContent
+      navigationContent = parsedContent
+    }
+  } catch {
+    // Fallback to default if JSON parsing fails
+    navigationContent = defaultNavigation
+  }
 
   return (
     <header className="fixed top-0 w-full z-50 bg-black/90 backdrop-blur-md border-b border-purple-500/20">
@@ -20,7 +57,7 @@ export default function Header() {
           <div className="flex items-center space-x-2">
             <img 
               src={vapeologyLogo} 
-              alt="VAPEOLO" 
+              alt={navigationContent.logoAlt} 
               className="h-14 w-auto"
               data-testid="img-vapeolo-logo"
             />
@@ -29,16 +66,16 @@ export default function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-8">
             <a href="#inicio" className="text-gray-300 hover:text-purple-400 transition-colors">
-              Inicio
+              {navigationContent.menuItems.inicio}
             </a>
             <a href="#productos" className="text-gray-300 hover:text-purple-400 transition-colors">
-              Productos
+              {navigationContent.menuItems.productos}
             </a>
             <a href="/affiliates" className="text-gray-300 hover:text-purple-400 transition-colors">
-              Afiliados
+              {navigationContent.menuItems.afiliados}
             </a>
             <a href="#contacto" className="text-gray-300 hover:text-purple-400 transition-colors">
-              Contacto
+              {navigationContent.menuItems.contacto}
             </a>
           </nav>
 
@@ -85,20 +122,20 @@ export default function Header() {
           <div className="lg:hidden py-4 border-t border-purple-500/20">
             <nav className="flex flex-col space-y-4">
               <a href="#inicio" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
-                Inicio
+                {navigationContent.menuItems.inicio}
               </a>
               <a href="#productos" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
-                Productos
+                {navigationContent.menuItems.productos}
               </a>
               <a href="/affiliates" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
-                Afiliados
+                {navigationContent.menuItems.afiliados}
               </a>
               <a href="#contacto" className="text-gray-300 hover:text-purple-400 transition-colors py-2">
-                Contacto
+                {navigationContent.menuItems.contacto}
               </a>
               <Button variant="outline" className="w-full border-purple-500/30 hover:border-purple-400 text-white hover:text-white">
                 <User className="h-4 w-4 mr-2 text-white" />
-                Iniciar Sesión
+                {navigationContent.buttons.login}
               </Button>
             </nav>
           </div>

@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Star, Quote } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { HomepageContentResponse } from '@shared/schema'
+import { HomepageContentResponse, type TestimonialsContent } from '@shared/schema'
 
 export default function TestimonialsSection() {
   // Fetch homepage content with graceful fallback
@@ -19,6 +19,30 @@ export default function TestimonialsSection() {
 
   // Use database content if available, otherwise fallback to default
   const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.testimonials) || defaultContent
+
+  // Default social content as fallback
+  const defaultSocialContent = {
+    socialPrompt: 'Síguenos en redes sociales',
+    socialPlatforms: [
+      { platform: "Instagram", handle: "@lavievapes.gt", followers: "45.2K" },
+      { platform: "TikTok", handle: "@lavievapes", followers: "32.8K" },
+      { platform: "Facebook", handle: "LAVIE Vapes Guatemala", followers: "28.1K" }
+    ],
+    ctaPrompt: 'Síguenos para contenido exclusivo',
+    ctaFeatures: '📸 Fotos de clientes • 🎥 Reviews y unboxing • 🎁 Promos y giveaways'
+  }
+
+  // Parse social content from content JSON field or use defaults
+  let socialContent = defaultSocialContent
+  try {
+    if (content && 'content' in content && content.content) {
+      const parsedContent = JSON.parse(content.content) as TestimonialsContent
+      socialContent = parsedContent
+    }
+  } catch {
+    // Fallback to default if JSON parsing fails
+    socialContent = defaultSocialContent
+  }
 
   // TODO: Remove mock functionality
   const testimonials = [
@@ -56,11 +80,7 @@ export default function TestimonialsSection() {
     }
   ]
 
-  const socialStats = [
-    { platform: "Instagram", followers: "45.2K", handle: "@lavievapes.gt" },
-    { platform: "TikTok", followers: "32.8K", handle: "@lavievapes" },
-    { platform: "Facebook", followers: "28.1K", handle: "LAVIE Vapes Guatemala" }
-  ]
+  // Remove hardcoded socialStats as they now come from CMS
 
   return (
     <section className="py-20 bg-black relative overflow-hidden">
@@ -130,7 +150,7 @@ export default function TestimonialsSection() {
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {socialStats.map((social, idx) => (
+            {socialContent.socialPlatforms.map((social: any, idx: number) => (
               <Card 
                 key={idx}
                 className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border-purple-500/20 hover:border-purple-400/50 transition-all duration-300 hover-elevate"

@@ -21,7 +21,12 @@ import {
   Users,
   MessageSquare,
   Phone,
-  Loader2
+  Loader2,
+  Navigation,
+  ShoppingBag,
+  UserPlus,
+  Footprints,
+  Menu
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -98,30 +103,42 @@ export default function AdminHomepage() {
 
   const getSectionIcon = (section: string) => {
     switch (section) {
+      case "navigation": return Menu;
       case "hero": return Layout;
       case "about": return Users;
+      case "products": return ShoppingBag;
       case "testimonials": return MessageSquare;
       case "contact": return Phone;
+      case "affiliates": return UserPlus;
+      case "footer": return Footprints;
       default: return Edit3;
     }
   };
 
   const getSectionTitle = (section: string) => {
     switch (section) {
-      case "hero": return "Sección Hero";
+      case "navigation": return "Navegación y Header";
+      case "hero": return "Sección Principal (Hero)";
       case "about": return "Sección Acerca de";
+      case "products": return "Sección Productos";
       case "testimonials": return "Sección Testimonios";
       case "contact": return "Sección Contacto";
+      case "affiliates": return "Programa de Afiliación";
+      case "footer": return "Pie de Página";
       default: return section;
     }
   };
 
   const getSectionDescription = (section: string) => {
     switch (section) {
-      case "hero": return "Edita el título principal, subtítulo y botones de llamada a la acción";
-      case "about": return "Gestiona el contenido de la sección 'Quiénes somos'";
-      case "testimonials": return "Configura el título y subtítulo de la sección de testimonios";
-      case "contact": return "Personaliza el título y subtítulo de la sección de contacto";
+      case "navigation": return "Configura textos del menú, botones y logo del header";
+      case "hero": return "Edita el título principal, subtítulo, características y botones";
+      case "about": return "Gestiona contenido, destacados y estadísticas de la sección";
+      case "products": return "Configura textos de la sección de productos y etiquetas";
+      case "testimonials": return "Edita contenido y enlaces de redes sociales";
+      case "contact": return "Personaliza formularios, información de contacto y envíos";
+      case "affiliates": return "Gestiona niveles, formularios y mensajes del programa";
+      case "footer": return "Configura enlaces, textos legales y columnas del footer";
       default: return "";
     }
   };
@@ -171,7 +188,7 @@ export default function AdminHomepage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {["hero", "about", "testimonials", "contact"].map((section) => (
+            {["navigation", "hero", "about", "products", "testimonials", "contact", "affiliates", "footer"].map((section) => (
               <ContentSectionCard
                 key={section}
                 section={section}
@@ -227,7 +244,9 @@ function ContentSectionCard({
       subtitle: content?.subtitle || "",
       description: content?.description || "",
       buttonText: content?.buttonText || "",
+      buttonSecondaryText: content?.buttonSecondaryText || "",
       buttonUrl: content?.buttonUrl || "",
+      content: content?.content || "",
       active: content?.active ?? true,
     },
   });
@@ -240,7 +259,9 @@ function ContentSectionCard({
         subtitle: content.subtitle || "",
         description: content.description || "",
         buttonText: content.buttonText || "",
+        buttonSecondaryText: content.buttonSecondaryText || "",
         buttonUrl: content.buttonUrl || "",
+        content: content.content || "",
         active: content.active ?? true,
       });
     }
@@ -250,7 +271,9 @@ function ContentSectionCard({
     onSave(data);
   };
 
-  const hasButtonFields = section === "hero";
+  const hasButtonFields = ["hero", "contact", "affiliates"].includes(section);
+  const hasSecondaryButton = section === "hero";
+  const hasComplexContent = ["navigation", "about", "products", "testimonials", "contact", "affiliates", "footer"].includes(section);
 
   return (
     <Card className="bg-gray-900 border-purple-500/20">
@@ -381,6 +404,7 @@ function ContentSectionCard({
                     <FormControl>
                       <Input
                         {...field}
+                        value={field.value || ""}
                         className="bg-gray-800/50 border-purple-500/30 text-white"
                         placeholder="Ingresa el título de la sección"
                         data-testid={`input-title-${section}`}
@@ -474,6 +498,54 @@ function ContentSectionCard({
                     )}
                   />
                 </div>
+              )}
+
+              {hasSecondaryButton && (
+                <FormField
+                  control={form.control}
+                  name="buttonSecondaryText"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Texto del Botón Secundario</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          className="bg-gray-800/50 border-purple-500/30 text-white"
+                          placeholder="Ej: Unirme como Afiliado"
+                          data-testid={`input-button-secondary-text-${section}`}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {hasComplexContent && (
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Contenido Complejo (JSON)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          className="bg-gray-800/50 border-purple-500/30 text-white font-mono text-sm"
+                          placeholder="Configuración JSON para contenido avanzado..."
+                          rows={8}
+                          data-testid={`textarea-content-${section}`}
+                        />
+                      </FormControl>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Contenido JSON para configuraciones avanzadas (navegación, enlaces, formularios, etc.)
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               <FormField

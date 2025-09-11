@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card'
 import { Globe, Battery, Wind, Shield } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { HomepageContentResponse } from '@shared/schema'
+import { HomepageContentResponse, type AboutContent } from '@shared/schema'
 
 export default function AboutSection() {
   // Fetch homepage content with graceful fallback
@@ -20,7 +20,8 @@ export default function AboutSection() {
   // Use database content if available, otherwise fallback to default
   const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.about) || defaultContent
 
-  const highlights = [
+  // Default highlights as fallback
+  const defaultHighlights = [
     {
       icon: Globe,
       title: "Presencia en más de 10 países",
@@ -42,6 +43,32 @@ export default function AboutSection() {
       description: "15 años de experiencia y excelencia comprobada"
     }
   ]
+
+  // Parse highlights and stats from content JSON field or use defaults
+  let highlights = defaultHighlights
+  let statsContent = {
+    experience: 'Años de experiencia',
+    flavors: 'Sabores disponibles', 
+    countries: 'Países con presencia'
+  }
+  
+  try {
+    if (content && 'content' in content && content.content) {
+      const parsedContent = JSON.parse(content.content) as AboutContent
+      if (parsedContent.highlights) {
+        highlights = parsedContent.highlights.map((highlight, index) => ({
+          ...highlight,
+          icon: [Globe, Battery, Wind, Shield][index] || Globe
+        }))
+      }
+      if (parsedContent.stats) {
+        statsContent = parsedContent.stats
+      }
+    }
+  } catch {
+    // Fallback to default if JSON parsing fails
+    highlights = defaultHighlights
+  }
 
   return (
     <section className="py-20 bg-gradient-to-b from-black to-gray-900 relative">
