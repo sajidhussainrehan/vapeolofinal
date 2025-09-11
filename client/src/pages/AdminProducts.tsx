@@ -11,29 +11,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ArrowLeft, 
   Plus,
   Package,
   Edit2,
   Eye,
-  EyeOff
+  EyeOff,
+  AlertTriangle,
+  TrendingDown,
+  CheckCircle,
+  Info
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  type Product,
+  getAvailableInventory,
+  isOutOfStock,
+  isLowStock,
+  getStockStatus
+} from "@shared/schema";
 
-interface Product {
-  id: string;
-  name: string;
-  puffs: number;
-  price: string;
-  image?: string;
-  sabores: string[];
-  description?: string;
-  popular: boolean;
-  active: boolean;
-  createdAt: string;
-}
+// Product interface is now imported from shared/schema.ts
 
 export default function AdminProducts() {
   const { user, token } = useAuth();
@@ -41,6 +43,8 @@ export default function AdminProducts() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'stock' | 'created'>('name');
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
   // Form state
   const [formData, setFormData] = useState({
@@ -52,6 +56,9 @@ export default function AdminProducts() {
     description: "",
     popular: false,
     active: true,
+    inventory: "0",
+    reservedInventory: "0",
+    lowStockThreshold: "10",
   });
 
   // Redirect if not logged in
@@ -153,7 +160,11 @@ export default function AdminProducts() {
       description: "",
       popular: false,
       active: true,
+      inventory: "0",
+      reservedInventory: "0",
+      lowStockThreshold: "10",
     });
+    setFormErrors({});
   };
 
   const handleOpenDialog = (product?: Product) => {
@@ -168,16 +179,51 @@ export default function AdminProducts() {
         description: product.description || "",
         popular: product.popular,
         active: product.active,
+        inventory: product.inventory?.toString() || "0",
+        reservedInventory: product.reservedInventory?.toString() || "0",
+        lowStockThreshold: product.lowStockThreshold?.toString() || "10",
       });
     } else {
       setEditingProduct(null);
       resetForm();
     }
+    setFormErrors({});
     setIsDialogOpen(true);
+  };
+
+  const validateForm = () => {
+    const errors: {[key: string]: string} = {};
+    
+    const inventory = parseInt(formData.inventory) || 0;
+    const reservedInventory = parseInt(formData.reservedInventory) || 0;
+    const lowStockThreshold = parseInt(formData.lowStockThreshold) || 0;
+    
+    if (inventory < 0) {
+      errors.inventory = "El inventario no puede ser negativo";
+    }
+    
+    if (reservedInventory < 0) {
+      errors.reservedInventory = "El inventario reservado no puede ser negativo";
+    }
+    
+    if (reservedInventory > inventory) {
+      errors.reservedInventory = "El inventario reservado no puede ser mayor al inventario total";
+    }
+    
+    if (lowStockThreshold < 0) {
+      errors.lowStockThreshold = "El umbral de stock bajo no puede ser negativo";
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
     
     // Validate and process sabores array
     const saboresArray = formData.sabores
@@ -194,6 +240,9 @@ export default function AdminProducts() {
       description: formData.description || undefined,
       popular: formData.popular,
       active: formData.active,
+      inventory: parseInt(formData.inventory) || 0,
+      reservedInventory: parseInt(formData.reservedInventory) || 0,
+      lowStockThreshold: parseInt(formData.lowStockThreshold) || 10,
     };
 
     if (editingProduct) {
@@ -209,6 +258,48 @@ export default function AdminProducts() {
       productData: { active: !product.active }
     });
   };
+
+  // Helper function to get stock status badge
+  const getStockStatusBadge = (product: Product) => {
+    const status = getStockStatus(product);
+    const available = getAvailableInventory(product);
+    
+    switch (status) {
+      case 'out_of_stock':
+        return (
+          <Badge variant="outline" className="border-red-500/50 text-red-400">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            Sin Stock
+          </Badge>
+        );
+      case 'low_stock':
+        return (
+          <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
+            <TrendingDown className="w-3 h-3 mr-1" />
+            Stock Bajo
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="border-green-500/50 text-green-400">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            En Stock
+          </Badge>
+        );
+    }
+  };
+
+  // Helper function to sort products
+  const sortedProducts = [...(products || [])].sort((a, b) => {
+    switch (sortBy) {
+      case 'stock':
+        return getAvailableInventory(a) - getAvailableInventory(b);
+      case 'created':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
 
   return (
     <div className="min-h-screen bg-black">
@@ -231,17 +322,29 @@ export default function AdminProducts() {
             </div>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => handleOpenDialog()}
-                className="bg-purple-600 hover:bg-purple-700"
-                data-testid="button-add-product"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Agregar Producto
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-4">
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'name' | 'stock' | 'created')}>
+              <SelectTrigger className="w-48 bg-gray-800 border-gray-700">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-700">
+                <SelectItem value="name">Nombre</SelectItem>
+                <SelectItem value="stock">Stock Disponible</SelectItem>
+                <SelectItem value="created">Fecha de Creación</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  onClick={() => handleOpenDialog()}
+                  className="bg-purple-600 hover:bg-purple-700"
+                  data-testid="button-add-product"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar Producto
+                </Button>
+              </DialogTrigger>
             <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
@@ -324,6 +427,77 @@ export default function AdminProducts() {
                   />
                 </div>
 
+                {/* Inventory Management Section */}
+                <div className="space-y-4 pt-4 border-t border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-purple-400" />
+                    <h3 className="text-lg font-medium text-white">Gestión de Inventario</h3>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="w-4 h-4 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Configure el inventario para realizar seguimiento del stock</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="inventory">Inventario Total</Label>
+                      <Input
+                        id="inventory"
+                        type="number"
+                        min="0"
+                        value={formData.inventory}
+                        onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.value }))}
+                        className={`bg-gray-800 border-gray-700 ${formErrors.inventory ? 'border-red-500' : ''}`}
+                        data-testid="input-product-inventory"
+                      />
+                      {formErrors.inventory && (
+                        <p className="text-red-400 text-sm mt-1">{formErrors.inventory}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="reservedInventory">Inventario Reservado</Label>
+                      <Input
+                        id="reservedInventory"
+                        type="number"
+                        min="0"
+                        value={formData.reservedInventory}
+                        onChange={(e) => setFormData(prev => ({ ...prev, reservedInventory: e.target.value }))}
+                        className={`bg-gray-800 border-gray-700 ${formErrors.reservedInventory ? 'border-red-500' : ''}`}
+                        data-testid="input-product-reserved-inventory"
+                      />
+                      {formErrors.reservedInventory && (
+                        <p className="text-red-400 text-sm mt-1">{formErrors.reservedInventory}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="lowStockThreshold">Umbral Stock Bajo</Label>
+                      <Input
+                        id="lowStockThreshold"
+                        type="number"
+                        min="0"
+                        value={formData.lowStockThreshold}
+                        onChange={(e) => setFormData(prev => ({ ...prev, lowStockThreshold: e.target.value }))}
+                        className={`bg-gray-800 border-gray-700 ${formErrors.lowStockThreshold ? 'border-red-500' : ''}`}
+                        data-testid="input-product-low-stock-threshold"
+                      />
+                      {formErrors.lowStockThreshold && (
+                        <p className="text-red-400 text-sm mt-1">{formErrors.lowStockThreshold}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-gray-400 bg-gray-800/50 p-3 rounded">
+                    <p><strong>Disponible:</strong> {Math.max(0, parseInt(formData.inventory) - parseInt(formData.reservedInventory))} unidades</p>
+                    <p className="text-xs mt-1">Stock disponible = Inventario total - Inventario reservado</p>
+                  </div>
+                </div>
+
                 <div className="flex gap-6">
                   <div className="flex items-center space-x-2">
                     <Switch
@@ -367,6 +541,7 @@ export default function AdminProducts() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </header>
 
@@ -404,20 +579,38 @@ export default function AdminProducts() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products?.map((product) => (
+                {sortedProducts?.map((product) => (
                   <Card key={product.id} className="bg-gray-900 border-purple-500/20">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-white flex items-center gap-2">
+                          <CardTitle className="text-white flex items-center gap-2 flex-wrap">
                             {product.name}
                             {product.popular && (
                               <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-400">
                                 Popular
                               </Badge>
                             )}
+                            {getStockStatusBadge(product)}
                           </CardTitle>
                           <p className="text-sm text-gray-400">{product.puffs} puffs • Q{product.price}</p>
+                          <div className="flex items-center gap-4 mt-1">
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <span className="text-xs text-purple-300">
+                                  Disponible: {getAvailableInventory(product)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-xs">
+                                  <p>Total: {product.inventory || 0}</p>
+                                  <p>Reservado: {product.reservedInventory || 0}</p>
+                                  <p>Disponible: {getAvailableInventory(product)}</p>
+                                  <p>Umbral: {product.lowStockThreshold || 10}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -475,6 +668,56 @@ export default function AdminProducts() {
                           {product.description}
                         </p>
                       )}
+
+                      {/* Inventory Status Bar */}
+                      <div className="mb-3 p-2 bg-gray-800/50 rounded-md">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs text-gray-400">Gestión de Stock</span>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="w-3 h-3 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="text-xs max-w-48">
+                                <p><strong>Total:</strong> {product.inventory || 0} unidades</p>
+                                <p><strong>Reservado:</strong> {product.reservedInventory || 0} unidades</p>
+                                <p><strong>Disponible:</strong> {getAvailableInventory(product)} unidades</p>
+                                <p><strong>Umbral bajo:</strong> {product.lowStockThreshold || 10} unidades</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        
+                        <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all ${
+                              isOutOfStock(product) 
+                                ? 'bg-red-500' 
+                                : isLowStock(product) 
+                                  ? 'bg-yellow-500' 
+                                  : 'bg-green-500'
+                            }`}
+                            style={{ 
+                              width: `${Math.min(100, ((product.inventory || 0) > 0 ? (getAvailableInventory(product) / (product.inventory || 1)) * 100 : 0))}%` 
+                            }}
+                          ></div>
+                        </div>
+                        
+                        <div className="flex justify-between text-xs">
+                          <span className={`${
+                            isOutOfStock(product) 
+                              ? 'text-red-400' 
+                              : isLowStock(product) 
+                                ? 'text-yellow-400' 
+                                : 'text-green-400'
+                          }`}>
+                            {getAvailableInventory(product)} disponible
+                          </span>
+                          <span className="text-gray-500">
+                            de {product.inventory || 0} total
+                          </span>
+                        </div>
+                      </div>
 
                       <div className="flex justify-between items-center text-xs text-gray-500">
                         <span>Estado: {product.active ? "Activo" : "Inactivo"}</span>
