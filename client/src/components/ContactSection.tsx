@@ -96,7 +96,7 @@ export default function ContactSection() {
     {
       icon: Clock,
       title: "Envío gratis",
-      description: "En compras desde Q500"
+      description: "En compras desde Q200"
     }
   ]
 
