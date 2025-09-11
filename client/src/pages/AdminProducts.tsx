@@ -621,7 +621,10 @@ export default function AdminProducts() {
       );
     }
 
-    if (!flavors || flavors.length === 0) {
+    // Ensure flavors is an array and has proper typing
+    const flavorsList = Array.isArray(flavors) ? flavors as ProductFlavor[] : [];
+
+    if (!flavorsList || flavorsList.length === 0) {
       return (
         <div className="mb-3">
           <p className="text-sm text-gray-400 mb-2">Sabores:</p>
@@ -642,7 +645,7 @@ export default function AdminProducts() {
       );
     }
 
-    const activeFlavors = flavors.filter((f: any) => f.active);
+    const activeFlavors = flavorsList.filter((f: ProductFlavor) => f.active);
     const visibleFlavors = activeFlavors.slice(0, 3);
     const totalFlavors = activeFlavors.length;
 
@@ -915,6 +918,256 @@ export default function AdminProducts() {
               </form>
             </DialogContent>
           </Dialog>
+
+          {/* Flavor Management Dialog */}
+          <Dialog open={flavorDialogOpen} onOpenChange={setFlavorDialogOpen}>
+            <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-4xl max-h-[90vh]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Gestionar Sabores - {currentProductForFlavors?.name}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+                {/* Left side - Add/Edit flavor form */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white">
+                    {editingFlavor ? "Editar Sabor" : "Agregar Nuevo Sabor"}
+                  </h3>
+                  
+                  <form onSubmit={handleFlavorSubmit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="flavor-name">Nombre del Sabor</Label>
+                      <Input
+                        id="flavor-name"
+                        value={flavorFormData.name}
+                        onChange={(e) => setFlavorFormData(prev => ({ ...prev, name: e.target.value }))}
+                        required
+                        placeholder="Ej: Fresa, Menta, etc."
+                        className={`bg-gray-800 border-gray-700 ${flavorFormErrors.name ? 'border-red-500' : ''}`}
+                        data-testid="input-flavor-name"
+                      />
+                      {flavorFormErrors.name && (
+                        <p className="text-red-400 text-sm mt-1">{flavorFormErrors.name}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label htmlFor="flavor-inventory">Inventario</Label>
+                        <Input
+                          id="flavor-inventory"
+                          type="number"
+                          min="0"
+                          value={flavorFormData.inventory}
+                          onChange={(e) => setFlavorFormData(prev => ({ ...prev, inventory: e.target.value }))}
+                          className={`bg-gray-800 border-gray-700 ${flavorFormErrors.inventory ? 'border-red-500' : ''}`}
+                          data-testid="input-flavor-inventory"
+                        />
+                        {flavorFormErrors.inventory && (
+                          <p className="text-red-400 text-sm mt-1">{flavorFormErrors.inventory}</p>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="flavor-reserved">Reservado</Label>
+                        <Input
+                          id="flavor-reserved"
+                          type="number"
+                          min="0"
+                          value={flavorFormData.reservedInventory}
+                          onChange={(e) => setFlavorFormData(prev => ({ ...prev, reservedInventory: e.target.value }))}
+                          className={`bg-gray-800 border-gray-700 ${flavorFormErrors.reservedInventory ? 'border-red-500' : ''}`}
+                          data-testid="input-flavor-reserved"
+                        />
+                        {flavorFormErrors.reservedInventory && (
+                          <p className="text-red-400 text-sm mt-1">{flavorFormErrors.reservedInventory}</p>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="flavor-threshold">Umbral</Label>
+                        <Input
+                          id="flavor-threshold"
+                          type="number"
+                          min="0"
+                          value={flavorFormData.lowStockThreshold}
+                          onChange={(e) => setFlavorFormData(prev => ({ ...prev, lowStockThreshold: e.target.value }))}
+                          className={`bg-gray-800 border-gray-700 ${flavorFormErrors.lowStockThreshold ? 'border-red-500' : ''}`}
+                          data-testid="input-flavor-threshold"
+                        />
+                        {flavorFormErrors.lowStockThreshold && (
+                          <p className="text-red-400 text-sm mt-1">{flavorFormErrors.lowStockThreshold}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="flavor-active"
+                        checked={flavorFormData.active}
+                        onCheckedChange={(checked) => setFlavorFormData(prev => ({ ...prev, active: checked }))}
+                        data-testid="switch-flavor-active"
+                      />
+                      <Label htmlFor="flavor-active">Sabor Activo</Label>
+                    </div>
+
+                    <div className="text-sm text-gray-400 bg-gray-800/50 p-3 rounded">
+                      <p><strong>Disponible:</strong> {Math.max(0, parseInt(flavorFormData.inventory || "0") - parseInt(flavorFormData.reservedInventory || "0"))} unidades</p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        type="submit"
+                        disabled={createFlavorMutation.isPending || updateFlavorMutation.isPending}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        data-testid="button-save-flavor"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {editingFlavor ? "Actualizar" : "Crear"} Sabor
+                      </Button>
+                      
+                      {editingFlavor && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={resetFlavorForm}
+                          className="border-gray-700"
+                          data-testid="button-cancel-edit-flavor"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Cancelar Edición
+                        </Button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+
+                {/* Right side - Flavor list */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-white">Sabores Existentes</h3>
+                    {productFlavors && (
+                      <Badge variant="outline" className="text-gray-300">
+                        {productFlavors.length} sabores
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {flavorsLoading ? (
+                      [...Array(3)].map((_, i) => (
+                        <Card key={i} className="bg-gray-800 border-gray-700">
+                          <CardContent className="p-3">
+                            <Skeleton className="h-4 w-24 bg-gray-700 mb-2" />
+                            <Skeleton className="h-3 w-16 bg-gray-700" />
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : productFlavors && productFlavors.length > 0 ? (
+                      productFlavors.map((flavor) => (
+                        <Card key={flavor.id} className="bg-gray-800 border-gray-700">
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-medium text-white">{flavor.name}</h4>
+                                  {getFlavorStockStatusBadge(flavor)}
+                                  {!flavor.active && (
+                                    <Badge variant="outline" className="text-gray-400 border-gray-500">
+                                      Inactivo
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-400 space-y-1">
+                                  <p>Total: {flavor.inventory} | Reservado: {flavor.reservedInventory} | Disponible: {getFlavorAvailableInventory(flavor)}</p>
+                                  <p>Umbral: {flavor.lowStockThreshold}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditFlavor(flavor)}
+                                  data-testid={`button-edit-flavor-${flavor.id}`}
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDeletingFlavor(flavor)}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                  data-testid={`button-delete-flavor-${flavor.id}`}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardContent className="text-center py-8">
+                          <Package className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                          <p className="text-gray-400">No hay sabores registrados</p>
+                          <p className="text-xs text-gray-500 mt-1">Agrega sabores para este producto</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFlavorDialogOpen(false);
+                    resetFlavorForm();
+                    setCurrentProductForFlavors(null);
+                  }}
+                  className="border-gray-700"
+                  data-testid="button-close-flavor-dialog"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Flavor Confirmation Dialog */}
+          <AlertDialog open={!!deletingFlavor} onOpenChange={() => setDeletingFlavor(null)}>
+            <AlertDialogContent className="bg-gray-900 border-red-500/20 text-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-red-400">¿Eliminar Sabor?</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-300">
+                  ¿Estás seguro de que deseas eliminar el sabor "{deletingFlavor?.name}"? 
+                  Esta acción no se puede deshacer y se perderán todos los datos de inventario asociados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel 
+                  onClick={() => setDeletingFlavor(null)}
+                  className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                  data-testid="button-cancel-delete-flavor"
+                >
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteFlavor}
+                  disabled={deleteFlavorMutation.isPending}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  data-testid="button-confirm-delete-flavor"
+                >
+                  {deleteFlavorMutation.isPending ? "Eliminando..." : "Eliminar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
           </div>
         </div>
       </header>
