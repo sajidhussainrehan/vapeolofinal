@@ -1016,6 +1016,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/admin/products/:id", requireAuth, requirePermission('deleteItems'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Verify product exists before deletion
+      const existingProduct = await storage.getProduct(id);
+      if (!existingProduct) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      // Check if product has any associated sales
+      const sales = await storage.getSales();
+      const productSales = sales.filter(sale => sale.productId === id);
+      
+      if (productSales.length > 0) {
+        return res.status(400).json({ 
+          error: "Cannot delete product with existing sales. Consider deactivating it instead.",
+          suggestion: "Set the product as inactive to hide it from customers while preserving sales history."
+        });
+      }
+      
+      await storage.deleteProduct(id);
+      res.json({ success: true, message: "Product and associated flavors deleted successfully" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Seed hardcoded products from ProductStore.tsx
   app.post("/api/admin/products/seed", requireAuth, requirePermission('addProduct'), async (req, res) => {
     try {

@@ -272,6 +272,27 @@ export default function AdminProducts() {
     },
   });
 
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      return apiRequest("DELETE", `/api/admin/products/${productId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      setDeletingProduct(null);
+      toast({
+        title: "Producto eliminado",
+        description: "El producto se ha eliminado correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el producto",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -539,6 +560,12 @@ export default function AdminProducts() {
   const handleDeleteFlavor = () => {
     if (deletingFlavor) {
       deleteFlavorMutation.mutate(deletingFlavor.id);
+    }
+  };
+
+  const handleDeleteProduct = () => {
+    if (deletingProduct) {
+      deleteProductMutation.mutate(deletingProduct.id);
     }
   };
 
@@ -1588,185 +1615,6 @@ export default function AdminProducts() {
             </AlertDialogContent>
           </AlertDialog>
 
-      <div className="max-w-7xl mx-auto p-6">
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="bg-gray-900 border-purple-500/20">
-                <CardHeader>
-                  <Skeleton className="h-6 w-32 bg-gray-800" />
-                  <Skeleton className="h-4 w-20 bg-gray-800" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-20 bg-gray-800" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {products?.length === 0 ? (
-              <Card className="bg-gray-900 border-purple-500/20">
-                <CardContent className="text-center py-12">
-                  <Package className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-white mb-2">No hay productos registrados</h3>
-                  <p className="text-gray-400 mb-4">Comienza agregando productos a tu catálogo</p>
-                  <Button
-                    onClick={() => handleOpenDialog()}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Agregar Primer Producto
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedProducts?.map((product) => (
-                  <Card key={product.id} className="bg-gray-900 border-purple-500/20">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-white flex items-center gap-2 flex-wrap">
-                            {product.name}
-                            {product.popular && (
-                              <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-400">
-                                Popular
-                              </Badge>
-                            )}
-                            {getProductStockStatusBadge(product)}
-                          </CardTitle>
-                          <p className="text-sm text-gray-400">{product.puffs} puffs • Q{product.price}</p>
-                          <div className="flex items-center gap-4 mt-1">
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="text-xs text-purple-300">
-                                  Disponible: {getAvailableInventory(product)}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <div className="text-xs">
-                                  <p>Total: {product.inventory || 0}</p>
-                                  <p>Reservado: {product.reservedInventory || 0}</p>
-                                  <p>Disponible: {getAvailableInventory(product)}</p>
-                                  <p>Umbral: {product.lowStockThreshold || 10}</p>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleToggleActive(product)}
-                            data-testid={`button-toggle-${product.id}`}
-                          >
-                            {product.active ? (
-                              <Eye className="w-4 h-4 text-green-400" />
-                            ) : (
-                              <EyeOff className="w-4 h-4 text-gray-400" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenDialog(product)}
-                            data-testid={`button-edit-${product.id}`}
-                          >
-                            <Edit2 className="w-4 h-4 text-purple-400" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenFlavorDialog(product)}
-                            data-testid={`button-manage-flavors-${product.id}`}
-                          >
-                            <Settings className="w-4 h-4 text-blue-400" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {product.image && (
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                          className="w-full h-32 object-cover rounded-lg mb-3"
-                        />
-                      )}
-                      
-                      <FlavorDisplaySection product={product} />
-
-                      {product.description && (
-                        <p className="text-sm text-gray-300 mb-3 line-clamp-2">
-                          {product.description}
-                        </p>
-                      )}
-
-                      {/* Inventory Status Bar */}
-                      <div className="mb-3 p-2 bg-gray-800/50 rounded-md">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs text-gray-400">Gestión de Stock</span>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Info className="w-3 h-3 text-gray-400" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="text-xs max-w-48">
-                                <p><strong>Total:</strong> {product.inventory || 0} unidades</p>
-                                <p><strong>Reservado:</strong> {product.reservedInventory || 0} unidades</p>
-                                <p><strong>Disponible:</strong> {getAvailableInventory(product)} unidades</p>
-                                <p><strong>Umbral bajo:</strong> {product.lowStockThreshold || 10} unidades</p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        
-                        <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all ${
-                              isOutOfStock(product) 
-                                ? 'bg-red-500' 
-                                : isLowStock(product) 
-                                  ? 'bg-yellow-500' 
-                                  : 'bg-green-500'
-                            }`}
-                            style={{ 
-                              width: `${Math.min(100, ((product.inventory || 0) > 0 ? (getAvailableInventory(product) / (product.inventory || 1)) * 100 : 0))}%` 
-                            }}
-                          ></div>
-                        </div>
-                        
-                        <div className="flex justify-between text-xs">
-                          <span className={`${
-                            isOutOfStock(product) 
-                              ? 'text-red-400' 
-                              : isLowStock(product) 
-                                ? 'text-yellow-400' 
-                                : 'text-green-400'
-                          }`}>
-                            {getAvailableInventory(product)} disponible
-                          </span>
-                          <span className="text-gray-500">
-                            de {product.inventory || 0} total
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span>Estado: {product.active ? "Activo" : "Inactivo"}</span>
-                        <span>Creado: {new Date(product.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Flavor Management Dialog */}
       <Dialog open={flavorDialogOpen} onOpenChange={setFlavorDialogOpen}>
         <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-4xl max-h-[90vh]">
@@ -1801,7 +1649,7 @@ export default function AdminProducts() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label htmlFor="flavor-inventory">Inventario</Label>
+                  <Label htmlFor="flavor-inventory">Inventario Total</Label>
                   <Input
                     id="flavor-inventory"
                     type="number"
@@ -1815,9 +1663,9 @@ export default function AdminProducts() {
                     <p className="text-red-400 text-sm mt-1">{flavorFormErrors.inventory}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <Label htmlFor="flavor-reserved">Reservado</Label>
+                  <Label htmlFor="flavor-reserved">Inventario Reservado</Label>
                   <Input
                     id="flavor-reserved"
                     type="number"
@@ -1831,9 +1679,9 @@ export default function AdminProducts() {
                     <p className="text-red-400 text-sm mt-1">{flavorFormErrors.reservedInventory}</p>
                   )}
                 </div>
-                
+
                 <div>
-                  <Label htmlFor="flavor-threshold">Umbral</Label>
+                  <Label htmlFor="flavor-threshold">Umbral Bajo Stock</Label>
                   <Input
                     id="flavor-threshold"
                     type="number"
@@ -1856,34 +1704,117 @@ export default function AdminProducts() {
                   onCheckedChange={(checked) => setFlavorFormData(prev => ({ ...prev, active: checked }))}
                   data-testid="switch-flavor-active"
                 />
-                <Label htmlFor="flavor-active">Sabor Activo</Label>
+                <Label htmlFor="flavor-active">Sabor activo</Label>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex justify-end gap-2">
                 <Button
                   type="submit"
                   disabled={createFlavorMutation.isPending || updateFlavorMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  data-testid="button-save-flavor"
+                  className="bg-purple-600 hover:bg-purple-700"
+                  data-testid="button-submit-flavor"
                 >
-                  <Save className="w-4 h-4 mr-2" />
+                  {createFlavorMutation.isPending || updateFlavorMutation.isPending ? "Guardando..." : ""}
                   {editingFlavor ? "Actualizar" : "Crear"} Sabor
                 </Button>
-                
                 {editingFlavor && (
                   <Button
                     type="button"
                     variant="outline"
                     onClick={resetFlavorForm}
-                    className="border-gray-700"
+                    className="border-gray-700 text-gray-300"
                     data-testid="button-cancel-edit-flavor"
                   >
-                    <X className="w-4 h-4 mr-2" />
-                    Cancelar Edición
+                    Cancelar
                   </Button>
                 )}
               </div>
             </form>
+
+            {/* Existing Flavors List */}
+            <div className="space-y-3">
+              <h4 className="text-md font-medium text-white">Sabores Existentes</h4>
+              {flavorsLoading ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <Card key={i} className="bg-gray-800">
+                      <CardContent className="p-3">
+                        <Skeleton className="h-4 w-1/3 bg-gray-700 mb-2" />
+                        <Skeleton className="h-3 w-1/2 bg-gray-700" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : productFlavors && productFlavors.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                  {productFlavors.map((flavor) => (
+                    <Card key={flavor.id} className="bg-gray-800 border-gray-700">
+                      <CardContent className="p-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-medium text-white">{flavor.name}</h5>
+                              {!flavor.active && (
+                                <Badge variant="secondary" className="bg-red-500/10 text-red-400 text-xs">
+                                  Inactivo
+                                </Badge>
+                              )}
+                              {getFlavorStockStatus(flavor) === 'out_of_stock' && (
+                                <Badge variant="secondary" className="bg-red-500/10 text-red-400 text-xs">
+                                  Sin Stock
+                                </Badge>
+                              )}
+                              {getFlavorStockStatus(flavor) === 'low_stock' && (
+                                <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-400 text-xs">
+                                  Poco Stock
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-400 mt-1">
+                              <div>Disponible: {getFlavorAvailableInventory(flavor)}</div>
+                              <div>Total: {flavor.inventory} | Reservado: {flavor.reservedInventory}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setEditingFlavor(flavor);
+                                setFlavorFormData({
+                                  name: flavor.name,
+                                  inventory: flavor.inventory.toString(),
+                                  reservedInventory: flavor.reservedInventory.toString(),
+                                  lowStockThreshold: flavor.lowStockThreshold.toString(),
+                                  active: flavor.active
+                                });
+                              }}
+                              data-testid={`button-edit-flavor-${flavor.id}`}
+                            >
+                              <Edit2 className="h-3 w-3 text-blue-400" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setDeletingFlavor(flavor)}
+                              data-testid={`button-delete-flavor-${flavor.id}`}
+                            >
+                              <Trash2 className="h-3 w-3 text-red-400" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-400">
+                  <p>No hay sabores registrados para este producto</p>
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1937,16 +1868,12 @@ export default function AdminProducts() {
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (deletingProduct) {
-                  // TODO: Implement delete product mutation
-                  setDeletingProduct(null);
-                }
-              }}
+              onClick={handleDeleteProduct}
+              disabled={deleteProductMutation.isPending}
               className="bg-red-600 hover:bg-red-700 text-white"
               data-testid="button-confirm-delete-product"
             >
-              Eliminar
+              {deleteProductMutation.isPending ? "Eliminando..." : "Eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
