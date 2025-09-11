@@ -50,7 +50,6 @@ export default function TestimonialsSection() {
       {/* Background Effects */}
       <div className="absolute top-20 left-20 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
       <div className="absolute bottom-20 right-20 w-48 h-48 bg-blue-500/5 rounded-full blur-2xl"></div>
-
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -123,7 +122,7 @@ export default function TestimonialsSection() {
                 <CardContent className="p-6 text-center">
                   <div className="text-2xl font-black text-white mb-2">{social.followers}</div>
                   <div className="text-purple-300 font-medium mb-1">{social.platform}</div>
-                  <div className="text-gray-400 text-sm">{social.handle}</div>
+                  <div className="text-sm text-[#3c3e42]">{social.handle}</div>
                 </CardContent>
               </Card>
             ))}
@@ -141,5 +140,5 @@ export default function TestimonialsSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
