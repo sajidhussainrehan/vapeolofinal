@@ -22,6 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 import {
   updateSelfProfileSchema,
   changePasswordSchema,
@@ -154,18 +155,7 @@ export default function AdminProfile() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-white">Bienvenido, {user.username}</span>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                logout();
-                setLocation("/admin/login");
-              }}
-              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
-              data-testid="button-logout"
-            >
-              Cerrar Sesión
-            </Button>
+            <AdminProfileDropdown />
           </div>
         </div>
       </header>

@@ -8,7 +8,6 @@ import {
   Package, 
   ShoppingCart, 
   MessageSquare, 
-  LogOut,
   UserCheck,
   DollarSign,
   Layout,
@@ -16,6 +15,7 @@ import {
   Settings
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 
 export default function AdminDashboard() {
   const { user, logout, token } = useAuth();
@@ -58,16 +58,7 @@ export default function AdminDashboard() {
             <p className="text-gray-400">Panel de Administración</p>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-white">Bienvenido, {user.username}</span>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
-              data-testid="button-logout"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesión
-            </Button>
+            <AdminProfileDropdown />
           </div>
         </div>
       </header>

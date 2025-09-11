@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 import {
   insertUserSchema,
   updateUserSchema,
@@ -246,18 +247,7 @@ export default function AdminUsers() {
               <Plus className="w-4 h-4 mr-2" />
               Crear Usuario
             </Button>
-            <span className="text-white">Bienvenido, {user.username}</span>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                logout();
-                setLocation("/admin/login");
-              }}
-              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
-              data-testid="button-logout"
-            >
-              Cerrar Sesión
-            </Button>
+            <AdminProfileDropdown />
           </div>
         </div>
       </header>

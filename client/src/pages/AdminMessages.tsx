@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 
 interface ContactMessage {
   id: string;
@@ -139,19 +140,24 @@ export default function AdminMessages() {
     <div className="min-h-screen bg-black">
       {/* Header */}
       <header className="bg-gray-900 border-b border-purple-500/20 p-4">
-        <div className="max-w-7xl mx-auto flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/admin")}
-            className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
-            data-testid="button-back"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver al Dashboard
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Gestión de Mensajes</h1>
-            <p className="text-gray-400">Revisar y gestionar mensajes de contacto</p>
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/admin")}
+              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+              data-testid="button-back"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver al Dashboard
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Gestión de Mensajes</h1>
+              <p className="text-gray-400">Revisar y gestionar mensajes de contacto</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <AdminProfileDropdown />
           </div>
         </div>
       </header>

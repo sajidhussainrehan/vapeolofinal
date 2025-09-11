@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
   ArrowLeft, 
   Plus,
@@ -31,7 +32,8 @@ import {
   X,
   Upload,
   ImageIcon,
-  Loader2
+  Loader2,
+  MoreHorizontal
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +47,7 @@ import {
   getFlavorAvailableInventory,
   getFlavorStockStatus
 } from "@shared/schema";
+import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 
 // Product interface is now imported from shared/schema.ts
 
@@ -75,6 +78,7 @@ export default function AdminProducts() {
     active: true
   });
   const [flavorFormErrors, setFlavorFormErrors] = useState<{[key: string]: string}>({});
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
 
   // Query for flavors when managing a specific product
   const { data: productFlavors, isLoading: flavorsLoading } = useQuery({
@@ -1053,8 +1057,275 @@ export default function AdminProducts() {
               </form>
             </DialogContent>
           </Dialog>
+            
+            <AdminProfileDropdown />
+          </div>
+        </div>
+      </header>
 
-          {/* Flavor Management Dialog */}
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Product List and Stats */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="bg-gray-900 border-purple-500/20">
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4 bg-gray-800" />
+                  <Skeleton className="h-4 w-1/2 bg-gray-800" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-40 w-full bg-gray-800 mb-4" />
+                  <Skeleton className="h-4 w-full bg-gray-800 mb-2" />
+                  <Skeleton className="h-4 w-3/4 bg-gray-800" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : products && products.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedProducts.map((product) => (
+              <Card key={product.id} className="bg-gray-900 border-purple-500/20 hover-elevate" data-testid={`product-card-${product.id}`}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-white truncate">
+                    {product.name}
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    {/* Product status and stock badges */}
+                    {getStockStatusBadge(product)}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0 text-gray-400 hover:text-white">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                        <DropdownMenuItem
+                          onClick={() => handleOpenDialog(product)}
+                          className="text-white hover:bg-gray-700 cursor-pointer"
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenFlavorDialog(product)}
+                          className="text-white hover:bg-gray-700 cursor-pointer"
+                        >
+                          <Settings className="mr-2 h-4 w-4" />
+                          Gestionar Sabores
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeletingProduct(product)}
+                          className="text-red-400 hover:bg-red-500/10 cursor-pointer"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Product image */}
+                  <div className="aspect-square relative mb-4 bg-gray-800 rounded-md overflow-hidden">
+                    {product.image ? (
+                      <img
+                        src={`/uploads/${product.image}`}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-600">
+                        <ImageIcon className="w-8 h-8" />
+                      </div>
+                    )}
+                    {!product.active && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <EyeOff className="w-6 h-6 text-gray-300" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Product details */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-400">Puffs:</span>
+                      <span className="text-white font-medium">{product.puffs.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-400">Precio:</span>
+                      <span className="text-white font-medium">Q{parseFloat(product.price).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-400">Stock Total:</span>
+                      <span className="text-white font-medium">{getAvailableInventory(product)}</span>
+                    </div>
+                    
+                    {/* Flavors summary */}
+                    <FlavorDisplaySection product={product} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="bg-gray-900 border-purple-500/20">
+            <CardContent className="text-center py-12">
+              <Package className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">No hay productos</h3>
+              <p className="text-gray-400 mb-4">Comienza agregando tu primer producto al catálogo</p>
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Agregar Producto
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Product Creation/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProduct ? "Editar Producto" : "Agregar Nuevo Producto"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Nombre del Producto</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                  className="bg-gray-800 border-gray-700"
+                  data-testid="input-product-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="puffs">Número de Puffs</Label>
+                <Input
+                  id="puffs"
+                  type="number"
+                  value={formData.puffs}
+                  onChange={(e) => setFormData(prev => ({ ...prev, puffs: e.target.value }))}
+                  required
+                  className="bg-gray-800 border-gray-700"
+                  data-testid="input-product-puffs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="price">Precio (Q)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                  required
+                  className="bg-gray-800 border-gray-700"
+                  data-testid="input-product-price"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sabores">Sabores (separados por coma)</Label>
+                <Input
+                  id="sabores"
+                  value={formData.sabores}
+                  onChange={(e) => setFormData(prev => ({ ...prev, sabores: e.target.value }))}
+                  placeholder="Ej: Fresa, Menta, Uva"
+                  className="bg-gray-800 border-gray-700"
+                  data-testid="input-product-sabores"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="bg-gray-800 border-gray-700"
+                rows={3}
+                data-testid="textarea-product-description"
+              />
+            </div>
+
+            {/* Image Upload Section */}
+            <div>
+              <Label htmlFor="image">Imagen del Producto</Label>
+              <div className="mt-1">
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="bg-gray-800 border-gray-700"
+                  data-testid="input-product-image"
+                />
+                {imagePreview && (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-400 mb-2">Vista previa:</p>
+                    <div className="relative w-32 h-32 bg-gray-800 rounded-md overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="Vista previa"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="active"
+                checked={formData.active}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, active: checked }))}
+                data-testid="switch-product-active"
+              />
+              <Label htmlFor="active">Producto Activo</Label>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="submit"
+                disabled={createProductMutation.isPending || updateProductMutation.isPending || isUploading}
+                className="bg-purple-600 hover:bg-purple-700"
+                data-testid="button-save-product"
+              >
+                {isUploading ? 
+                  "Subiendo imagen..." :
+                  (createProductMutation.isPending || updateProductMutation.isPending ? 
+                    "Guardando..." : 
+                    `${editingProduct ? "Actualizar" : "Crear"} Producto`
+                  )
+                }
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="border-gray-700"
+                data-testid="button-cancel-product"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Flavor Management Dialog */}
           <Dialog open={flavorDialogOpen} onOpenChange={setFlavorDialogOpen}>
             <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-4xl max-h-[90vh]">
               <DialogHeader>
@@ -1302,10 +1573,6 @@ export default function AdminProducts() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          
-          </div>
-        </div>
-      </header>
 
       <div className="max-w-7xl mx-auto p-6">
         {isLoading ? (
@@ -1485,6 +1752,191 @@ export default function AdminProducts() {
           </div>
         )}
       </div>
+
+      {/* Flavor Management Dialog */}
+      <Dialog open={flavorDialogOpen} onOpenChange={setFlavorDialogOpen}>
+        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Gestionar Sabores - {currentProductForFlavors?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-white">
+              {editingFlavor ? "Editar Sabor" : "Agregar Nuevo Sabor"}
+            </h3>
+            
+            <form onSubmit={handleFlavorSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="flavor-name">Nombre del Sabor</Label>
+                <Input
+                  id="flavor-name"
+                  value={flavorFormData.name}
+                  onChange={(e) => setFlavorFormData(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                  placeholder="Ej: Fresa, Menta, etc."
+                  className={`bg-gray-800 border-gray-700 ${flavorFormErrors.name ? 'border-red-500' : ''}`}
+                  data-testid="input-flavor-name"
+                />
+                {flavorFormErrors.name && (
+                  <p className="text-red-400 text-sm mt-1">{flavorFormErrors.name}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label htmlFor="flavor-inventory">Inventario</Label>
+                  <Input
+                    id="flavor-inventory"
+                    type="number"
+                    min="0"
+                    value={flavorFormData.inventory}
+                    onChange={(e) => setFlavorFormData(prev => ({ ...prev, inventory: e.target.value }))}
+                    className={`bg-gray-800 border-gray-700 ${flavorFormErrors.inventory ? 'border-red-500' : ''}`}
+                    data-testid="input-flavor-inventory"
+                  />
+                  {flavorFormErrors.inventory && (
+                    <p className="text-red-400 text-sm mt-1">{flavorFormErrors.inventory}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="flavor-reserved">Reservado</Label>
+                  <Input
+                    id="flavor-reserved"
+                    type="number"
+                    min="0"
+                    value={flavorFormData.reservedInventory}
+                    onChange={(e) => setFlavorFormData(prev => ({ ...prev, reservedInventory: e.target.value }))}
+                    className={`bg-gray-800 border-gray-700 ${flavorFormErrors.reservedInventory ? 'border-red-500' : ''}`}
+                    data-testid="input-flavor-reserved"
+                  />
+                  {flavorFormErrors.reservedInventory && (
+                    <p className="text-red-400 text-sm mt-1">{flavorFormErrors.reservedInventory}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="flavor-threshold">Umbral</Label>
+                  <Input
+                    id="flavor-threshold"
+                    type="number"
+                    min="0"
+                    value={flavorFormData.lowStockThreshold}
+                    onChange={(e) => setFlavorFormData(prev => ({ ...prev, lowStockThreshold: e.target.value }))}
+                    className={`bg-gray-800 border-gray-700 ${flavorFormErrors.lowStockThreshold ? 'border-red-500' : ''}`}
+                    data-testid="input-flavor-threshold"
+                  />
+                  {flavorFormErrors.lowStockThreshold && (
+                    <p className="text-red-400 text-sm mt-1">{flavorFormErrors.lowStockThreshold}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="flavor-active"
+                  checked={flavorFormData.active}
+                  onCheckedChange={(checked) => setFlavorFormData(prev => ({ ...prev, active: checked }))}
+                  data-testid="switch-flavor-active"
+                />
+                <Label htmlFor="flavor-active">Sabor Activo</Label>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  disabled={createFlavorMutation.isPending || updateFlavorMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  data-testid="button-save-flavor"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingFlavor ? "Actualizar" : "Crear"} Sabor
+                </Button>
+                
+                {editingFlavor && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetFlavorForm}
+                    className="border-gray-700"
+                    data-testid="button-cancel-edit-flavor"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancelar Edición
+                  </Button>
+                )}
+              </div>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Flavor Confirmation Dialog */}
+      <AlertDialog open={!!deletingFlavor} onOpenChange={() => setDeletingFlavor(null)}>
+        <AlertDialogContent className="bg-gray-900 border-red-500/20 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">¿Eliminar Sabor?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              ¿Estás seguro de que deseas eliminar el sabor "{deletingFlavor?.name}"? 
+              Esta acción no se puede deshacer y se perderán todos los datos de inventario asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setDeletingFlavor(null)}
+              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              data-testid="button-cancel-delete-flavor"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteFlavor}
+              disabled={deleteFlavorMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-confirm-delete-flavor"
+            >
+              {deleteFlavorMutation.isPending ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Product Confirmation Dialog */}
+      <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
+        <AlertDialogContent className="bg-gray-900 border-red-500/20 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">¿Eliminar Producto?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              ¿Estás seguro de que deseas eliminar el producto "{deletingProduct?.name}"? 
+              Esta acción no se puede deshacer y se perderán todos los datos asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setDeletingProduct(null)}
+              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              data-testid="button-cancel-delete-product"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingProduct) {
+                  // TODO: Implement delete product mutation
+                  setDeletingProduct(null);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-confirm-delete-product"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

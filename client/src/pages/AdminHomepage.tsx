@@ -36,6 +36,7 @@ import {
   type UpdateHomepageContent
 } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import AdminProfileDropdown from "@/components/AdminProfileDropdown";
 
 export default function AdminHomepage() {
   const { user, token } = useAuth();
@@ -163,6 +164,9 @@ export default function AdminHomepage() {
               <h1 className="text-2xl font-bold text-white">Contenido de Homepage</h1>
               <p className="text-gray-400">Gestiona el contenido de todas las secciones</p>
             </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <AdminProfileDropdown />
           </div>
         </div>
       </header>
