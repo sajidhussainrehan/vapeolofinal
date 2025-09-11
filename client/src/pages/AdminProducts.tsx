@@ -177,6 +177,7 @@ export default function AdminProducts() {
     description: "",
     popular: false,
     active: true,
+    showOnHomepage: true,
     inventory: "0",
     reservedInventory: "0",
     lowStockThreshold: "10",
@@ -281,6 +282,7 @@ export default function AdminProducts() {
       description: "",
       popular: false,
       active: true,
+      showOnHomepage: true,
       inventory: "0",
       reservedInventory: "0",
       lowStockThreshold: "10",
@@ -350,6 +352,7 @@ export default function AdminProducts() {
         description: product.description || "",
         popular: product.popular,
         active: product.active,
+        showOnHomepage: product.showOnHomepage ?? true,
         inventory: product.inventory?.toString() || "0",
         reservedInventory: product.reservedInventory?.toString() || "0",
         lowStockThreshold: product.lowStockThreshold?.toString() || "10",
@@ -1027,6 +1030,15 @@ export default function AdminProducts() {
                       data-testid="switch-product-active"
                     />
                     <Label htmlFor="active">Producto Activo</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="showOnHomepage"
+                      checked={formData.showOnHomepage}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, showOnHomepage: checked }))}
+                      data-testid="switch-product-show-on-homepage"
+                    />
+                    <Label htmlFor="showOnHomepage">Mostrar en Página de Inicio</Label>
                   </div>
                 </div>
 

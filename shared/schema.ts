@@ -50,6 +50,7 @@ export const products = pgTable("products", {
   description: text("description"),
   popular: boolean("popular").notNull().default(false),
   active: boolean("active").notNull().default(true),
+  showOnHomepage: boolean("show_on_homepage").notNull().default(true), // Controls homepage visibility
   inventory: integer("inventory").notNull().default(0), // Total stock quantity
   reservedInventory: integer("reserved_inventory").notNull().default(0), // Items reserved in orders
   lowStockThreshold: integer("low_stock_threshold").notNull().default(10), // Reorder point
@@ -235,6 +236,7 @@ export const insertProductSchema = createInsertSchema(products).pick({
   description: true,
   popular: true,
   active: true,
+  showOnHomepage: true,
   inventory: true,
   reservedInventory: true,
   lowStockThreshold: true,

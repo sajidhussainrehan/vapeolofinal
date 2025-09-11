@@ -297,10 +297,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the updated storage method that properly handles flavor-level availability
       const availableProducts = await storage.getActiveProducts();
       
+      // Filter to only include products that should be shown on homepage
+      const homepageProducts = availableProducts.filter(product => product.showOnHomepage);
+      
       // Get flavors for each available product and apply server-side filtering
       const productsWithFlavors = [];
       
-      for (const product of availableProducts) {
+      for (const product of homepageProducts) {
         const flavors = await storage.getProductFlavors(product.id);
         
         if (flavors.length === 0) {
