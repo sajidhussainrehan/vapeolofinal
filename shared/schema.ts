@@ -199,6 +199,21 @@ export type HomepageContent = typeof homepageContent.$inferSelect;
 export type InsertHomepageContent = z.infer<typeof insertHomepageContentSchema>;
 export type UpdateHomepageContent = z.infer<typeof updateHomepageContentSchema>;
 
+// API Response types
+export type ApiResponse<T> = {
+  success: true;
+  data: T;
+} | {
+  error: string;
+};
+
+export type HomepageContentResponse = ApiResponse<{
+  hero: HomepageContent | null;
+  about: HomepageContent | null;
+  testimonials: HomepageContent | null;
+  contact: HomepageContent | null;
+}>;
+
 // Utility functions for inventory calculations
 export function getAvailableInventory(product: Product): number {
   return Math.max(0, product.inventory - product.reservedInventory);

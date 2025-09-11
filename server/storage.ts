@@ -17,7 +17,8 @@ import {
   type InsertContactMessage,
   type HomepageContent,
   type InsertHomepageContent,
-  type UpdateHomepageContent
+  type UpdateHomepageContent,
+  getAvailableInventory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, count } from "drizzle-orm";
@@ -156,7 +157,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveProducts(): Promise<Product[]> {
-    return await db.select().from(products).where(eq(products.active, true));
+    const allActiveProducts = await db.select().from(products).where(eq(products.active, true));
+    
+    // Filter out products with zero available inventory
+    return allActiveProducts.filter(product => getAvailableInventory(product) > 0);
   }
 
   async getProduct(id: string): Promise<Product | undefined> {

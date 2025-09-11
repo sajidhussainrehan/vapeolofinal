@@ -1,8 +1,25 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Star, Quote } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { HomepageContentResponse } from '@shared/schema'
 
 export default function TestimonialsSection() {
+  // Fetch homepage content with graceful fallback
+  const { data: homepageContent } = useQuery<HomepageContentResponse>({
+    queryKey: ['/api/homepage-content'],
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  })
+
+  // Default hardcoded content as fallback
+  const defaultContent = {
+    title: 'Testimonios',
+    subtitle: 'Lo que dicen nuestros clientes y socios'
+  }
+
+  // Use database content if available, otherwise fallback to default
+  const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.testimonials) || defaultContent
+
   // TODO: Remove mock functionality
   const testimonials = [
     {
@@ -55,11 +72,11 @@ export default function TestimonialsSection() {
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
             <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Testimonios
+              {content.title}
             </span>
           </h2>
           <p className="text-xl text-gray-300">
-            Lo que dicen nuestros clientes y socios
+            {content.subtitle}
           </p>
         </div>
 

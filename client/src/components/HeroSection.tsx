@@ -1,10 +1,30 @@
 import { Button } from '@/components/ui/button'
 import { ArrowRight, ShoppingCart, Users } from 'lucide-react'
 import { useLocation } from 'wouter'
+import { useQuery } from '@tanstack/react-query'
+import { HomepageContentResponse } from '@shared/schema'
 import heroImage from '@assets/generated_images/Hero_banner_lifestyle_image_3d61fbb5.png'
 
 export default function HeroSection() {
   const [, setLocation] = useLocation()
+
+  // Fetch homepage content with graceful fallback
+  const { data: homepageContent } = useQuery<HomepageContentResponse>({
+    queryKey: ['/api/homepage-content'],
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  })
+
+  // Default hardcoded content as fallback
+  const defaultContent = {
+    title: 'VAPEOLO:',
+    subtitle: 'Donde la experiencia y el sabor se fusionan',
+    description: '15 años diseñando los mejores cigarrillos electrónicos del mercado',
+    buttonText: 'Ver Productos',
+    buttonSecondaryText: 'Unirme como Afiliado'
+  }
+
+  // Use database content if available, otherwise fallback to default
+  const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.hero) || defaultContent
 
   const scrollToProducts = () => {
     const productosSection = document.getElementById('productos')
@@ -34,17 +54,17 @@ export default function HeroSection() {
           {/* Main Heading */}
           <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
-              VAPEOLO:
+              {content.title}
             </span>
             <br />
             <span className="text-white">
-              Donde la experiencia y el sabor se fusionan
+              {content.subtitle}
             </span>
           </h1>
 
           {/* Subtitle */}
           <p className="text-xl md:text-2xl text-gray-300 mb-8 font-medium">
-            15 años diseñando los mejores cigarrillos electrónicos del mercado
+            {content.description}
           </p>
 
           {/* Features */}
@@ -72,7 +92,7 @@ export default function HeroSection() {
               onClick={scrollToProducts}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
-              Ver Productos
+              {content.buttonText || defaultContent.buttonText}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             
@@ -84,7 +104,7 @@ export default function HeroSection() {
               onClick={navigateToAffiliates}
             >
               <Users className="mr-2 h-5 w-5" />
-              Unirme como Afiliado
+              {defaultContent.buttonSecondaryText}
             </Button>
           </div>
         </div>

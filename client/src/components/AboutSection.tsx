@@ -1,7 +1,25 @@
 import { Card } from '@/components/ui/card'
 import { Globe, Battery, Wind, Shield } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { HomepageContentResponse } from '@shared/schema'
 
 export default function AboutSection() {
+  // Fetch homepage content with graceful fallback
+  const { data: homepageContent } = useQuery<HomepageContentResponse>({
+    queryKey: ['/api/homepage-content'],
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  })
+
+  // Default hardcoded content as fallback
+  const defaultContent = {
+    title: '¿Quiénes somos?',
+    subtitle: 'VAPEOLO es distribuidora oficial de LAVIE, una marca con más de 15 años de innovación en diseño y fabricación de vapes.',
+    description: 'Nuestra misión: redefinir el vapeo en Latinoamérica'
+  }
+
+  // Use database content if available, otherwise fallback to default
+  const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.about) || defaultContent
+
   const highlights = [
     {
       icon: Globe,
@@ -36,18 +54,18 @@ export default function AboutSection() {
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
             <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              ¿Quiénes somos?
+              {content.title}
             </span>
           </h2>
           <div className="max-w-4xl mx-auto">
             <p className="text-xl text-gray-300 mb-6 leading-relaxed">
-              VAPEOLO es distribuidora oficial de LAVIE, una marca con más de <span className="text-purple-400 font-bold">15 años de innovación</span> en 
-              diseño y fabricación de vapes. Cada dispositivo combine tecnología avanzada, sabores intensos y una 
-              experiencia premium.
+              {content.subtitle || content.description || defaultContent.subtitle}
             </p>
-            <p className="text-lg text-blue-300 font-medium">
-              Nuestra misión: <span className="text-white">redefinir el vapeo en Latinoamérica</span>
-            </p>
+            {(content.description && content.subtitle !== content.description) && (
+              <p className="text-lg text-blue-300 font-medium">
+                {content.description}
+              </p>
+            )}
           </div>
         </div>
 

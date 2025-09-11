@@ -199,6 +199,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get homepage content (public)
+  app.get("/api/homepage-content", async (req, res) => {
+    try {
+      const allContent = await storage.getHomepageContent();
+      // Filter only active content for public consumption
+      const activeContent = allContent.filter(content => content.active);
+      
+      // Transform to a more convenient object structure for frontend
+      const contentMap = activeContent.reduce((acc, content) => {
+        acc[content.section] = {
+          title: content.title,
+          subtitle: content.subtitle,
+          description: content.description,
+          buttonText: content.buttonText,
+          buttonUrl: content.buttonUrl
+        };
+        return acc;
+      }, {} as Record<string, any>);
+      
+      res.json({ success: true, data: contentMap });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin routes (require authentication)
   
   // Admin login (with rate limiting)

@@ -5,10 +5,26 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { MapPin, Phone, Mail, MessageCircle, Truck, CreditCard, Clock, Loader2 } from 'lucide-react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
+import { HomepageContentResponse } from '@shared/schema'
 
 export default function ContactSection() {
+  // Fetch homepage content with graceful fallback
+  const { data: homepageContent } = useQuery<HomepageContentResponse>({
+    queryKey: ['/api/homepage-content'],
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  })
+
+  // Default hardcoded content as fallback
+  const defaultContent = {
+    title: 'Contacto',
+    subtitle: 'Estamos aquí para ayudarte'
+  }
+
+  // Use database content if available, otherwise fallback to default
+  const content = (homepageContent && 'success' in homepageContent && homepageContent.data?.contact) || defaultContent
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -110,11 +126,11 @@ export default function ContactSection() {
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
             <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Contacto
+              {content.title}
             </span>
           </h2>
           <p className="text-xl text-gray-300">
-            Estamos aquí para ayudarte
+            {content.subtitle}
           </p>
         </div>
 
