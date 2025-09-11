@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -33,7 +34,11 @@ import {
   Upload,
   ImageIcon,
   Loader2,
-  MoreHorizontal
+  MoreHorizontal,
+  Square,
+  CheckSquare,
+  Minus,
+  RotateCcw
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -79,6 +84,11 @@ export default function AdminProducts() {
   });
   const [flavorFormErrors, setFlavorFormErrors] = useState<{[key: string]: string}>({});
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+
+  // Bulk inventory update state
+  const [selectedFlavors, setSelectedFlavors] = useState<Set<string>>(new Set());
+  const [bulkInventoryAmount, setBulkInventoryAmount] = useState("");
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   // Query for flavors when managing a specific product
   const { data: productFlavors, isLoading: flavorsLoading } = useQuery({
@@ -164,6 +174,58 @@ export default function AdminProducts() {
         description: error.message || "No se pudo eliminar el sabor",
         variant: "destructive",
       });
+    },
+  });
+
+  // Bulk inventory update mutation
+  const bulkUpdateInventoryMutation = useMutation({
+    mutationFn: async ({ flavorIds, inventoryToAdd }: { flavorIds: string[]; inventoryToAdd: number }) => {
+      setIsBulkUpdating(true);
+      
+      // Get current flavors data to calculate new inventory
+      const currentFlavors = productFlavors || [];
+      const updates = flavorIds.map(flavorId => {
+        const flavor = currentFlavors.find(f => f.id === flavorId);
+        if (!flavor) throw new Error(`Sabor no encontrado: ${flavorId}`);
+        
+        const newInventory = flavor.inventory + inventoryToAdd;
+        return {
+          flavorId,
+          data: { inventory: newInventory }
+        };
+      });
+
+      // Execute all updates in parallel
+      const results = await Promise.all(
+        updates.map(({ flavorId, data }) => 
+          apiRequest("PATCH", `/api/admin/flavors/${flavorId}`, data)
+        )
+      );
+      
+      return { results, updatedCount: updates.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products", currentProductForFlavors?.id, "flavors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      
+      // Reset bulk operation state
+      setSelectedFlavors(new Set());
+      setBulkInventoryAmount("");
+      
+      toast({
+        title: "Inventario actualizado",
+        description: `Se actualizó el inventario de ${data.updatedCount} sabores correctamente`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el inventario masivamente",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsBulkUpdating(false);
     },
   });
 
@@ -478,6 +540,7 @@ export default function AdminProducts() {
     setCurrentProductForFlavors(product);
     setFlavorDialogOpen(true);
     resetFlavorForm();
+    resetBulkOperations(); // Reset bulk operations when opening dialog
   };
 
   const resetFlavorForm = () => {
@@ -567,6 +630,63 @@ export default function AdminProducts() {
     if (deletingProduct) {
       deleteProductMutation.mutate(deletingProduct.id);
     }
+  };
+
+  // Bulk operation helper functions
+  const toggleFlavorSelection = (flavorId: string) => {
+    setSelectedFlavors(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(flavorId)) {
+        newSet.delete(flavorId);
+      } else {
+        newSet.add(flavorId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllFlavors = () => {
+    const activeFlavors = (productFlavors || []).filter(f => f.active);
+    setSelectedFlavors(new Set(activeFlavors.map(f => f.id)));
+  };
+
+  const clearFlavorSelection = () => {
+    setSelectedFlavors(new Set());
+  };
+
+  const resetBulkOperations = () => {
+    setSelectedFlavors(new Set());
+    setBulkInventoryAmount("");
+  };
+
+  const validateBulkInventoryAmount = (): boolean => {
+    const amount = parseInt(bulkInventoryAmount);
+    return !isNaN(amount) && amount > 0;
+  };
+
+  const handleBulkInventoryUpdate = () => {
+    if (!validateBulkInventoryAmount()) {
+      toast({
+        title: "Error",
+        description: "Ingrese una cantidad válida mayor a 0",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedFlavors.size === 0) {
+      toast({
+        title: "Error", 
+        description: "Seleccione al menos un sabor para actualizar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const inventoryToAdd = parseInt(bulkInventoryAmount);
+    const flavorIds = Array.from(selectedFlavors);
+
+    bulkUpdateInventoryMutation.mutate({ flavorIds, inventoryToAdd });
   };
 
   // Helper function to get stock status badge for backward compatibility
@@ -1578,7 +1698,7 @@ export default function AdminProducts() {
                   </form>
                 </div>
 
-                {/* Right side - Flavor list */}
+                {/* Right side - Flavor list with bulk operations */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-white">Sabores Existentes</h3>
@@ -1588,6 +1708,91 @@ export default function AdminProducts() {
                       </Badge>
                     )}
                   </div>
+
+                  {/* Bulk Operations Controls */}
+                  {productFlavors && productFlavors.length > 0 && (
+                    <Card className="bg-gray-800 border-blue-500/20">
+                      <CardContent className="p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium text-blue-400">Actualización Masiva de Inventario</h4>
+                          {selectedFlavors.size > 0 && (
+                            <Badge variant="outline" className="text-blue-400 border-blue-500/50">
+                              {selectedFlavors.size} seleccionados
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="bulk-inventory" className="text-sm">Cantidad a agregar</Label>
+                            <Input
+                              id="bulk-inventory"
+                              type="number"
+                              min="1"
+                              value={bulkInventoryAmount}
+                              onChange={(e) => setBulkInventoryAmount(e.target.value)}
+                              placeholder="Ej: 50"
+                              className="bg-gray-700 border-gray-600 text-white"
+                              data-testid="input-bulk-inventory-amount"
+                            />
+                          </div>
+                          <div className="flex items-end gap-2">
+                            <Button
+                              onClick={handleBulkInventoryUpdate}
+                              disabled={isBulkUpdating || selectedFlavors.size === 0 || !validateBulkInventoryAmount()}
+                              className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                              data-testid="button-apply-bulk-inventory"
+                            >
+                              {isBulkUpdating ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Aplicando...
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Aplicar
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={selectAllFlavors}
+                            disabled={isBulkUpdating}
+                            className="border-gray-600 text-gray-300 hover:bg-gray-700 flex-1"
+                            data-testid="button-select-all-flavors"
+                          >
+                            <CheckSquare className="w-3 h-3 mr-1" />
+                            Seleccionar Todo
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={clearFlavorSelection}
+                            disabled={isBulkUpdating || selectedFlavors.size === 0}
+                            className="border-gray-600 text-gray-300 hover:bg-gray-700 flex-1"
+                            data-testid="button-clear-selection"
+                          >
+                            <Square className="w-3 h-3 mr-1" />
+                            Limpiar
+                          </Button>
+                        </div>
+
+                        {selectedFlavors.size > 0 && bulkInventoryAmount && validateBulkInventoryAmount() && (
+                          <div className="text-xs text-gray-400 bg-gray-700/50 p-3 rounded">
+                            <p className="text-green-400">
+                              <strong>Vista previa:</strong> Se agregarán {bulkInventoryAmount} unidades a {selectedFlavors.size} sabores seleccionados.
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {flavorsLoading ? (
@@ -1601,42 +1806,68 @@ export default function AdminProducts() {
                       ))
                     ) : productFlavors && productFlavors.length > 0 ? (
                       productFlavors.map((flavor) => (
-                        <Card key={flavor.id} className="bg-gray-800 border-gray-700">
+                        <Card key={flavor.id} className={`bg-gray-800 border-gray-700 transition-colors ${
+                          selectedFlavors.has(flavor.id) ? 'ring-2 ring-blue-500/50 border-blue-500/30' : ''
+                        }`}>
                           <CardContent className="p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="font-medium text-white">{flavor.name}</h4>
-                                  {getFlavorStockStatusBadge(flavor)}
-                                  {!flavor.active && (
-                                    <Badge variant="outline" className="text-gray-400 border-gray-500">
-                                      Inactivo
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="text-xs text-gray-400 space-y-1">
-                                  <p>Total: {flavor.inventory} | Reservado: {flavor.reservedInventory} | Disponible: {getFlavorAvailableInventory(flavor)}</p>
-                                  <p>Umbral: {flavor.lowStockThreshold}</p>
-                                </div>
+                            <div className="flex items-start gap-3">
+                              {/* Checkbox for bulk selection */}
+                              <div className="pt-1">
+                                <Checkbox
+                                  checked={selectedFlavors.has(flavor.id)}
+                                  onCheckedChange={() => toggleFlavorSelection(flavor.id)}
+                                  disabled={!flavor.active || isBulkUpdating}
+                                  className="border-gray-500 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                  data-testid={`checkbox-flavor-${flavor.id}`}
+                                />
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditFlavor(flavor)}
-                                  data-testid={`button-edit-flavor-${flavor.id}`}
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setDeletingFlavor(flavor)}
-                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                  data-testid={`button-delete-flavor-${flavor.id}`}
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
+
+                              <div className="flex items-center justify-between flex-1">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className={`font-medium ${flavor.active ? 'text-white' : 'text-gray-400'}`}>
+                                      {flavor.name}
+                                    </h4>
+                                    {getFlavorStockStatusBadge(flavor)}
+                                    {!flavor.active && (
+                                      <Badge variant="outline" className="text-gray-400 border-gray-500">
+                                        Inactivo
+                                      </Badge>
+                                    )}
+                                    {selectedFlavors.has(flavor.id) && (
+                                      <Badge variant="outline" className="text-blue-400 border-blue-500/50">
+                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                        Seleccionado
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-400 space-y-1">
+                                    <p>Total: <span className="text-white">{flavor.inventory}</span> | Reservado: <span className="text-yellow-400">{flavor.reservedInventory}</span> | Disponible: <span className="text-green-400">{getFlavorAvailableInventory(flavor)}</span></p>
+                                    <p>Umbral: <span className="text-orange-400">{flavor.lowStockThreshold}</span></p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditFlavor(flavor)}
+                                    disabled={isBulkUpdating}
+                                    className="hover:bg-gray-700"
+                                    data-testid={`button-edit-flavor-${flavor.id}`}
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeletingFlavor(flavor)}
+                                    disabled={isBulkUpdating}
+                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                    data-testid={`button-delete-flavor-${flavor.id}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </CardContent>
