@@ -121,7 +121,7 @@ export default function TestimonialsSection() {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-2xl font-black text-white mb-2">{social.followers}</div>
-                  <div className="text-purple-300 font-medium mb-1">{social.platform}</div>
+                  <div className="font-medium mb-1 text-[#7e23de]">{social.platform}</div>
                   <div className="text-sm text-[#3c3e42]">{social.handle}</div>
                 </CardContent>
               </Card>
