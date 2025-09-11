@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, unique, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -44,7 +44,11 @@ export const products = pgTable("products", {
   reservedInventory: integer("reserved_inventory").notNull().default(0), // Items reserved in orders
   lowStockThreshold: integer("low_stock_threshold").notNull().default(10), // Reorder point
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
-});
+}, (table) => ({
+  inventoryCheck: check("product_inventory_non_negative", sql`inventory >= 0`),
+  reservedInventoryCheck: check("product_reserved_inventory_non_negative", sql`reserved_inventory >= 0`),
+  priceCheck: check("product_price_positive", sql`price > 0`),
+}));
 
 // Sales table
 export const sales = pgTable("sales", {
@@ -89,14 +93,18 @@ export const homepageContent = pgTable("homepage_content", {
 // Product flavors table
 export const productFlavors = pgTable("product_flavors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  productId: varchar("product_id").notNull().references(() => products.id),
+  productId: varchar("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
   name: text("name").notNull(), // e.g., 'Mango Ice', 'Blueberry'
   inventory: integer("inventory").notNull().default(0), // Stock quantity for this flavor
   reservedInventory: integer("reserved_inventory").notNull().default(0), // Items reserved in orders
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5), // Reorder point for flavor
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
-});
+}, (table) => ({
+  uniqueProductFlavor: unique().on(table.productId, table.name),
+  inventoryCheck: check("inventory_non_negative", sql`inventory >= 0`),
+  reservedInventoryCheck: check("reserved_inventory_non_negative", sql`reserved_inventory >= 0`),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({

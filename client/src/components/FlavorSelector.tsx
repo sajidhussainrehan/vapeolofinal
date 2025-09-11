@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
+import type { ProductFlavor } from '@shared/schema'
+import { isFlavorOutOfStock, getFlavorAvailableInventory } from '@shared/schema'
 
 interface FlavorSelectorProps {
   product: {
@@ -13,6 +15,9 @@ interface FlavorSelectorProps {
     puffs: string
     image: string
     sabores: string[]
+    flavors?: ProductFlavor[]
+    availableFlavors?: ProductFlavor[]
+    hasFlavorInventory?: boolean
   }
 }
 
@@ -26,10 +31,34 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
     ? `Q${(parseFloat(product.price.replace('Q', '')) * (1 - parseFloat(distributor.discount) / 100)).toFixed(0)}`
     : product.price
 
+  // Use availableFlavors if present (new system), otherwise fall back to sabores (legacy)
+  const flavorsToShow = product.availableFlavors && product.availableFlavors.length > 0
+    ? product.availableFlavors
+    : product.sabores?.map(saborName => ({ 
+        id: `legacy-${saborName}`,
+        name: saborName, 
+        active: true, 
+        inventory: 999, 
+        reservedInventory: 0,
+        lowStockThreshold: 5,
+        createdAt: new Date(),
+        productId: product.id
+      } as ProductFlavor)) || [];
+
   const handleAddToCart = () => {
     if (!selectedFlavor) {
       alert('Por favor selecciona un sabor antes de agregar al carrito')
       return
+    }
+
+    // For flavor-based inventory, check if selected flavor is still available
+    if (product.hasFlavorInventory) {
+      const selectedFlavorObj = flavorsToShow.find(f => f.name === selectedFlavor)
+      if (selectedFlavorObj && isFlavorOutOfStock(selectedFlavorObj)) {
+        alert('El sabor seleccionado ya no está disponible. Por favor selecciona otro sabor.')
+        setSelectedFlavor('') // Clear invalid selection
+        return
+      }
     }
 
     addToCart({
@@ -59,16 +88,36 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
             <SelectValue placeholder="Elige un sabor..." />
           </SelectTrigger>
           <SelectContent className="bg-gray-800 border-purple-500/30">
-            {product.sabores.map((sabor) => (
-              <SelectItem 
-                key={sabor} 
-                value={sabor}
-                className="text-white hover:bg-purple-600/20 focus:bg-purple-600/20"
-                data-testid={`option-flavor-${product.id}-${sabor}`}
-              >
-                {sabor}
+            {flavorsToShow.map((flavor) => {
+              const isOutOfStock = product.hasFlavorInventory ? isFlavorOutOfStock(flavor) : false;
+              const availableStock = product.hasFlavorInventory ? getFlavorAvailableInventory(flavor) : null;
+              
+              return (
+                <SelectItem 
+                  key={flavor.name} 
+                  value={flavor.name}
+                  disabled={isOutOfStock}
+                  className={`text-white hover:bg-purple-600/20 focus:bg-purple-600/20 ${
+                    isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  data-testid={`option-flavor-${product.id}-${flavor.name}`}
+                >
+                  <div className="flex justify-between items-center w-full">
+                    <span>{flavor.name}</span>
+                    {product.hasFlavorInventory && availableStock !== null && (
+                      <span className="text-xs ml-2 text-gray-400">
+                        {isOutOfStock ? 'Agotado' : `${availableStock} disponibles`}
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
+              );
+            })}
+            {flavorsToShow.length === 0 && (
+              <SelectItem value="" disabled className="text-gray-400">
+                No hay sabores disponibles
               </SelectItem>
-            ))}
+            )}
           </SelectContent>
         </Select>
       </div>

@@ -16,7 +16,8 @@ import {
   insertUserSchema,
   insertHomepageContentSchema,
   insertProductFlavorSchema,
-  updateProductFlavorSchema
+  updateProductFlavorSchema,
+  isFlavorOutOfStock
 } from "@shared/schema";
 
 // JWT_SECRET configuration
@@ -197,38 +198,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get active products with flavors (public)
   app.get("/api/products", async (req, res) => {
     try {
-      // Get all active products (basic filtering)
-      const allActiveProducts = await db.select().from(products).where(eq(products.active, true));
+      // Use the updated storage method that properly handles flavor-level availability
+      const availableProducts = await storage.getActiveProducts();
       
-      // Get flavors for each product and apply appropriate filtering
+      // Get flavors for each available product and apply server-side filtering
       const productsWithFlavors = [];
       
-      for (const product of allActiveProducts) {
+      for (const product of availableProducts) {
         const flavors = await storage.getProductFlavors(product.id);
-        const activeFlavors = flavors.filter(flavor => flavor.active);
         
-        // If product has no flavors, include it for backward compatibility
-        // This ensures products without flavors still show up until migration is complete
         if (flavors.length === 0) {
+          // Product without flavors - include for backward compatibility
+          // Only if product-level inventory is available (already checked in getActiveProducts)
           productsWithFlavors.push({
             ...product,
             flavors: []
           });
         } else {
-          // Only include products that have at least one flavor with available inventory
+          // Product with flavors - apply server-side filtering
+          const activeFlavors = flavors.filter(flavor => flavor.active);
+          
+          // Server-side enforcement: only include flavors with available inventory > 0
           const availableFlavors = activeFlavors.filter(flavor => {
-            const available = Math.max(0, flavor.inventory - flavor.reservedInventory);
-            return available > 0;
+            return !isFlavorOutOfStock(flavor);
           });
           
+          // Only include product if it has at least one available flavor
+          // (This check should always pass due to getActiveProducts filtering)
           if (availableFlavors.length > 0) {
             productsWithFlavors.push({
               ...product,
-              flavors: activeFlavors // Include all active flavors, not just available ones for display
+              flavors: availableFlavors // Only return available flavors
             });
           }
         }
       }
+      
       res.json({ success: true, data: productsWithFlavors });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

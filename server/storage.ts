@@ -172,8 +172,27 @@ export class DatabaseStorage implements IStorage {
   async getActiveProducts(): Promise<Product[]> {
     const allActiveProducts = await db.select().from(products).where(eq(products.active, true));
     
-    // Filter out products with zero available inventory
-    return allActiveProducts.filter(product => getAvailableInventory(product) > 0);
+    // Filter out products with zero available inventory, considering flavor-level stock
+    const productsWithAvailability = [];
+    
+    for (const product of allActiveProducts) {
+      const flavors = await this.getProductFlavors(product.id);
+      
+      // If product has flavors, check flavor-level availability
+      if (flavors.length > 0) {
+        const activeFlavors = flavors.filter(f => f.active);
+        if (activeFlavors.length > 0 && !isProductOutOfStock(activeFlavors)) {
+          productsWithAvailability.push(product);
+        }
+      } else {
+        // Fallback to product-level inventory for products without flavors
+        if (getAvailableInventory(product) > 0) {
+          productsWithAvailability.push(product);
+        }
+      }
+    }
+    
+    return productsWithAvailability;
   }
 
   async getProduct(id: string): Promise<Product | undefined> {

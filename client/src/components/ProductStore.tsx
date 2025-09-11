@@ -5,7 +5,8 @@ import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
 import FlavorSelector from '@/components/FlavorSelector'
 import { useQuery } from '@tanstack/react-query'
-import type { Product } from '@shared/schema'
+import type { Product, ProductFlavor } from '@shared/schema'
+import { getFlavorAvailableInventory, isFlavorOutOfStock } from '@shared/schema'
 import barImage from '@assets/BAR (1)_1757558165026.png'
 import cubeImage from '@assets/CUBE_1757558165026.png'
 import cyberImage from '@assets/CYBER_1757558165027.png'
@@ -22,16 +23,38 @@ const imageMapping: Record<string, string> = {
 };
 
 // Transform database product for display
-function transformProduct(product: Product) {
+function transformProduct(product: Product & { flavors?: ProductFlavor[] }) {
+  // For backward compatibility, use sabores if no flavors are present
+  const flavors = product.flavors && product.flavors.length > 0 
+    ? product.flavors
+    : product.sabores?.map(saborName => ({ 
+        id: `legacy-${saborName}`,
+        name: saborName, 
+        active: true, 
+        inventory: 999, 
+        reservedInventory: 0,
+        productId: product.id,
+        lowStockThreshold: 5,
+        createdAt: new Date()
+      } as ProductFlavor)) || [];
+  
+  // Get available flavors (not out of stock) - but only filter for inventory if using new flavor system
+  const availableFlavors = product.flavors && product.flavors.length > 0
+    ? flavors.filter(flavor => flavor.active && !isFlavorOutOfStock(flavor))
+    : flavors.filter(flavor => flavor.active); // For legacy, all active flavors are available
+
   return {
     id: product.id,
     name: product.name,
     puffs: `${product.puffs.toLocaleString()} Puffs`, // Format number with commas
     price: `Q${Math.round(parseFloat(product.price))}`, // Add Q prefix and round
     image: product.image ? imageMapping[product.image] : '',
-    sabores: product.sabores,
+    sabores: product.sabores, // Keep for backward compatibility
+    flavors: flavors, // New flavor structure with inventory
+    availableFlavors: availableFlavors, // Only flavors that can be selected
     popular: product.popular,
-    originalPrice: parseFloat(product.price) // Keep original for calculations
+    originalPrice: parseFloat(product.price), // Keep original for calculations
+    hasFlavorInventory: product.flavors && product.flavors.length > 0 // Flag to indicate if using flavor-level inventory
   };
 }
 
@@ -40,7 +63,7 @@ export default function ProductStore() {
   const { distributor } = useDistributor()
 
   // Fetch products from API
-  const { data: productsResponse, isLoading, error } = useQuery<{success: boolean; data: Product[]}>({
+  const { data: productsResponse, isLoading, error } = useQuery<{success: boolean; data: (Product & { flavors?: ProductFlavor[] })[]}>({
     queryKey: ['/api/products'],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -152,14 +175,19 @@ export default function ProductStore() {
                 <div className="mb-6">
                   <p className="text-gray-400 text-sm mb-2">Sabores disponibles:</p>
                   <div className="flex flex-wrap gap-1">
-                    {product.sabores.slice(0, 3).map((sabor: string, idx: number) => (
+                    {product.availableFlavors.slice(0, 3).map((flavor, idx: number) => (
                       <Badge key={idx} variant="outline" className="text-xs border-purple-500/30 text-purple-300">
-                        {sabor}
+                        {flavor.name}
                       </Badge>
                     ))}
-                    {product.sabores.length > 3 && (
+                    {product.availableFlavors.length > 3 && (
                       <Badge variant="outline" className="text-xs border-blue-500/30 text-blue-300">
-                        +{product.sabores.length - 3} más
+                        +{product.availableFlavors.length - 3} más
+                      </Badge>
+                    )}
+                    {product.availableFlavors.length === 0 && product.hasFlavorInventory && (
+                      <Badge variant="outline" className="text-xs border-red-500/30 text-red-300">
+                        Sin sabores disponibles
                       </Badge>
                     )}
                   </div>
