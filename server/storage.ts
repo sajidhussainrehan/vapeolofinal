@@ -8,6 +8,7 @@ import {
   productFlavors,
   type User, 
   type InsertUser,
+  type UpdateUser,
   type Affiliate,
   type InsertAffiliate,
   type Product,
@@ -34,6 +35,9 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  listUsers(): Promise<User[]>;
+  updateUser(id: string, updates: UpdateUser): Promise<User>;
+  setUserPassword(id: string, hashedPassword: string): Promise<User>;
   
   // Affiliates
   createAffiliate(affiliate: InsertAffiliate): Promise<Affiliate>;
@@ -42,6 +46,7 @@ export interface IStorage {
   getAffiliateByEmail(email: string): Promise<Affiliate | undefined>;
   updateAffiliateStatus(id: string, status: string, approvedBy?: string): Promise<Affiliate>;
   updateAffiliatePassword(id: string, hashedPassword: string): Promise<Affiliate>;
+  deleteAffiliate(id: string): Promise<void>;
   
   // Products
   getProducts(): Promise<Product[]>;
@@ -105,6 +110,28 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async listUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUser(id: string, updates: UpdateUser): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async setUserPassword(id: string, hashedPassword: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
   // Affiliates
   async createAffiliate(affiliate: InsertAffiliate): Promise<Affiliate> {
     // Set discount and minimum purchase based on level
@@ -163,6 +190,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(affiliates.id, id))
       .returning();
     return affiliate;
+  }
+
+  async deleteAffiliate(id: string): Promise<void> {
+    await db
+      .delete(affiliates)
+      .where(eq(affiliates.id, id));
   }
 
   // Products

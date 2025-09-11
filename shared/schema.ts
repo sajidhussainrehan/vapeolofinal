@@ -3,12 +3,13 @@ import { pgTable, text, varchar, integer, decimal, timestamp, boolean, unique, c
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table (admins)
+// Users table (admins and sales team)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("admin"),
+  role: text("role").notNull().default("sales"), // 'admin' | 'sales'
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
@@ -21,7 +22,7 @@ export const affiliates = pgTable("affiliates", {
   level: text("level").notNull(), // 'agente', 'distribuidor', 'socio'
   discount: decimal("discount", { precision: 5, scale: 2 }).notNull(),
   minimumPurchase: decimal("minimum_purchase", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected', 'standby'
   password: text("password"), // Para login de distribuidores (null si no aprobado)
   message: text("message"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
@@ -154,6 +155,41 @@ export const productFlavorsRelations = relations(productFlavors, ({ one }) => ({
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  role: true,
+  active: true,
+});
+
+export const updateUserSchema = createInsertSchema(users).pick({
+  username: true,
+  role: true,
+  active: true,
+}).partial();
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password must contain at least one special character"),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+export const adminResetPasswordSchema = z.object({
+  newPassword: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, "Password must contain at least one special character"),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 export const insertAffiliateSchema = createInsertSchema(affiliates).pick({
@@ -239,6 +275,9 @@ export const updateProductFlavorSchema = createInsertSchema(productFlavors).pick
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
+export type AdminResetPassword = z.infer<typeof adminResetPasswordSchema>;
 
 export type Affiliate = typeof affiliates.$inferSelect;
 export type InsertAffiliate = z.infer<typeof insertAffiliateSchema>;

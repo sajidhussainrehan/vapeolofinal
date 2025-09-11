@@ -1,10 +1,12 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   ArrowLeft, 
   Check, 
@@ -13,7 +15,9 @@ import {
   Mail,
   Phone,
   Calendar,
-  DollarSign
+  DollarSign,
+  Pause,
+  Trash2
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +41,8 @@ export default function AdminAffiliates() {
   const { user, token } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [deletingAffiliate, setDeletingAffiliate] = useState<Affiliate | null>(null);
+  const [standbyAffiliate, setStandbyAffiliate] = useState<Affiliate | null>(null);
 
   // Redirect if not logged in
   if (!user) {
@@ -92,8 +98,52 @@ export default function AdminAffiliates() {
     },
   });
 
+  const deleteAffiliateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/admin/affiliates/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: token || "",
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete affiliate");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/affiliates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] });
+      toast({
+        title: "Afiliado eliminado",
+        description: "El afiliado se ha eliminado correctamente",
+      });
+      setDeletingAffiliate(null);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el afiliado",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleUpdateStatus = (id: string, status: string) => {
     updateStatusMutation.mutate({ id, status });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingAffiliate) {
+      deleteAffiliateMutation.mutate(deletingAffiliate.id);
+    }
+  };
+
+  const handleConfirmStandby = () => {
+    if (standbyAffiliate) {
+      updateStatusMutation.mutate({ id: standbyAffiliate.id, status: "standby" });
+      setStandbyAffiliate(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -104,6 +154,8 @@ export default function AdminAffiliates() {
         return <Badge variant="secondary" className="bg-green-500/10 text-green-400">Aprobado</Badge>;
       case "rejected":
         return <Badge variant="secondary" className="bg-red-500/10 text-red-400">Rechazado</Badge>;
+      case "standby":
+        return <Badge variant="secondary" className="bg-orange-500/10 text-orange-400">En Espera</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -226,28 +278,103 @@ export default function AdminAffiliates() {
                         </div>
                       </div>
 
-                      {affiliate.status === "pending" && (
-                        <div className="flex gap-3">
+                      {/* Action Buttons */}
+                      <div className="flex gap-3 flex-wrap">
+                        {affiliate.status === "pending" && (
+                          <>
+                            <Button
+                              onClick={() => handleUpdateStatus(affiliate.id, "approved")}
+                              disabled={updateStatusMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700"
+                              data-testid={`button-approve-${affiliate.id}`}
+                            >
+                              <Check className="w-4 h-4 mr-2" />
+                              Aprobar
+                            </Button>
+                            <Button
+                              onClick={() => handleUpdateStatus(affiliate.id, "rejected")}
+                              disabled={updateStatusMutation.isPending}
+                              variant="destructive"
+                              data-testid={`button-reject-${affiliate.id}`}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Rechazar
+                            </Button>
+                            <Button
+                              onClick={() => setStandbyAffiliate(affiliate)}
+                              disabled={updateStatusMutation.isPending}
+                              variant="outline"
+                              className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                              data-testid={`button-standby-${affiliate.id}`}
+                            >
+                              <Pause className="w-4 h-4 mr-2" />
+                              En Espera
+                            </Button>
+                          </>
+                        )}
+                        
+                        {affiliate.status === "approved" && (
+                          <>
+                            <Button
+                              onClick={() => setStandbyAffiliate(affiliate)}
+                              disabled={updateStatusMutation.isPending}
+                              variant="outline"
+                              className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                              data-testid={`button-standby-${affiliate.id}`}
+                            >
+                              <Pause className="w-4 h-4 mr-2" />
+                              En Espera
+                            </Button>
+                            <Button
+                              onClick={() => handleUpdateStatus(affiliate.id, "rejected")}
+                              disabled={updateStatusMutation.isPending}
+                              variant="outline"
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                              data-testid={`button-reject-${affiliate.id}`}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Rechazar
+                            </Button>
+                          </>
+                        )}
+                        
+                        {affiliate.status === "standby" && (
+                          <>
+                            <Button
+                              onClick={() => handleUpdateStatus(affiliate.id, "approved")}
+                              disabled={updateStatusMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700"
+                              data-testid={`button-approve-${affiliate.id}`}
+                            >
+                              <Check className="w-4 h-4 mr-2" />
+                              Aprobar
+                            </Button>
+                            <Button
+                              onClick={() => handleUpdateStatus(affiliate.id, "rejected")}
+                              disabled={updateStatusMutation.isPending}
+                              variant="outline"
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                              data-testid={`button-reject-${affiliate.id}`}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Rechazar
+                            </Button>
+                          </>
+                        )}
+                        
+                        {(affiliate.status === "rejected" || affiliate.status === "standby") && (
                           <Button
-                            onClick={() => handleUpdateStatus(affiliate.id, "approved")}
-                            disabled={updateStatusMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                            data-testid={`button-approve-${affiliate.id}`}
+                            onClick={() => setDeletingAffiliate(affiliate)}
+                            disabled={deleteAffiliateMutation.isPending}
+                            variant="outline"
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                            data-testid={`button-delete-${affiliate.id}`}
                           >
-                            <Check className="w-4 h-4 mr-2" />
-                            Aprobar
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Eliminar
                           </Button>
-                          <Button
-                            onClick={() => handleUpdateStatus(affiliate.id, "rejected")}
-                            disabled={updateStatusMutation.isPending}
-                            variant="destructive"
-                            data-testid={`button-reject-${affiliate.id}`}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Rechazar
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       {affiliate.approvedAt && (
                         <div className="text-sm text-green-400">
@@ -262,6 +389,68 @@ export default function AdminAffiliates() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingAffiliate} onOpenChange={() => setDeletingAffiliate(null)}>
+        <AlertDialogContent className="bg-gray-900 border-red-500/20 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">¿Eliminar Afiliado?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              ¿Estás seguro de que deseas eliminar al afiliado "{deletingAffiliate?.name}"?
+              <br />
+              Esta acción no se puede deshacer y se perderán todos los datos asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setDeletingAffiliate(null)}
+              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              data-testid="button-cancel-delete-affiliate"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleteAffiliateMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-confirm-delete-affiliate"
+            >
+              {deleteAffiliateMutation.isPending ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Standby Confirmation Dialog */}
+      <AlertDialog open={!!standbyAffiliate} onOpenChange={() => setStandbyAffiliate(null)}>
+        <AlertDialogContent className="bg-gray-900 border-orange-500/20 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-orange-400">¿Poner en Espera?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              ¿Estás seguro de que deseas poner al afiliado "{standbyAffiliate?.name}" en estado de espera?
+              <br />
+              Podrás reactivarlo más tarde si es necesario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setStandbyAffiliate(null)}
+              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              data-testid="button-cancel-standby-affiliate"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmStandby}
+              disabled={updateStatusMutation.isPending}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              data-testid="button-confirm-standby-affiliate"
+            >
+              {updateStatusMutation.isPending ? "Procesando..." : "Poner en Espera"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

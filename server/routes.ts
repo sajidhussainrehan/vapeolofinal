@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -17,11 +17,20 @@ import {
   insertSaleSchema, 
   insertContactMessageSchema,
   insertUserSchema,
+  updateUserSchema,
+  changePasswordSchema,
+  adminResetPasswordSchema,
   insertHomepageContentSchema,
   insertProductFlavorSchema,
   updateProductFlavorSchema,
-  isFlavorOutOfStock
+  isFlavorOutOfStock,
+  type User
 } from "@shared/schema";
+
+// Extend Express Request interface to include user property
+interface AuthenticatedRequest extends Request {
+  user: User;
+}
 
 // JWT_SECRET configuration
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-key";
@@ -185,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // JWT authentication middleware
-  const requireAuth = async (req: any, res: any, next: any) => {
+  const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       return res.status(401).json({ error: "Authorization required" });
@@ -204,11 +213,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid token" });
       }
       
-      req.user = user;
+      if (!user.active) {
+        return res.status(401).json({ error: "Account deactivated" });
+      }
+      
+      (req as AuthenticatedRequest).user = user;
       next();
     } catch (error) {
       return res.status(401).json({ error: "Invalid token" });
     }
+  };
+
+  // Role-based access control middleware
+  const requireRole = (...allowedRoles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      if (!allowedRoles.includes(authReq.user.role)) {
+        return res.status(403).json({ error: "Insufficient permissions" });
+      }
+      
+      next();
+    };
   };
 
   // Public routes (frontend)
@@ -345,12 +374,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const saleData = {
         productId: orderItems[0].productId, // Use first product as main product
         quantity: orderItems.reduce((sum, item) => sum + item.quantity, 0),
-        unitPrice: orderTotal / orderItems.reduce((sum, item) => sum + item.quantity, 0),
+        unitPrice: (orderTotal / orderItems.reduce((sum, item) => sum + item.quantity, 0)).toFixed(2),
         totalAmount: orderTotal.toFixed(2),
         customerName: `${customerData.firstName} ${customerData.lastName}`,
         customerEmail: customerData.email || '',
         customerPhone: customerData.phone,
-        discount: 0
+        discount: '0'
       };
       
       const sale = await storage.createSale(saleData);
@@ -454,6 +483,202 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Profile management routes
+  app.get("/api/admin/me", requireAuth, async (req, res) => {
+    try {
+      const user = (req as AuthenticatedRequest).user;
+      res.json({ 
+        success: true, 
+        data: { 
+          id: user.id, 
+          username: user.username, 
+          role: user.role, 
+          active: user.active,
+          createdAt: user.createdAt 
+        } 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/me", requireAuth, async (req, res) => {
+    try {
+      const validatedData = updateUserSchema.parse(req.body);
+      const updatedUser = await storage.updateUser((req as AuthenticatedRequest).user.id, validatedData);
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          id: updatedUser.id, 
+          username: updatedUser.username, 
+          role: updatedUser.role, 
+          active: updatedUser.active,
+          createdAt: updatedUser.createdAt 
+        } 
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/me/password", requireAuth, async (req, res) => {
+    try {
+      const validatedData = changePasswordSchema.parse(req.body);
+      
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(validatedData.currentPassword, (req as AuthenticatedRequest).user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+      
+      // Validate new password strength
+      const passwordValidation = validatePasswordStrength(validatedData.newPassword);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          error: "Password validation failed", 
+          details: passwordValidation.errors 
+        });
+      }
+      
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
+      
+      // Update password
+      await storage.setUserPassword((req as AuthenticatedRequest).user.id, hashedPassword);
+      
+      res.json({ success: true, data: { message: "Password updated successfully" } });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // User management routes (admin-only)
+  app.get("/api/admin/users", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const users = await storage.listUsers();
+      const safeUsers = users.map(user => ({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        active: user.active,
+        createdAt: user.createdAt
+      }));
+      
+      res.json({ success: true, data: safeUsers });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/users", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(validatedData.password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          error: "Password validation failed", 
+          details: passwordValidation.errors 
+        });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      
+      // Create user
+      const newUser = await storage.createUser({
+        ...validatedData,
+        password: hashedPassword
+      });
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          id: newUser.id, 
+          username: newUser.username, 
+          role: newUser.role, 
+          active: newUser.active,
+          createdAt: newUser.createdAt 
+        } 
+      });
+    } catch (error: any) {
+      if (error.code === '23505') { // PostgreSQL unique constraint violation
+        res.status(400).json({ error: "Username already exists" });
+      } else {
+        res.status(400).json({ error: error.message });
+      }
+    }
+  });
+
+  app.patch("/api/admin/users/:id", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = updateUserSchema.parse(req.body);
+      
+      // Check if trying to deactivate the last admin
+      if (validatedData.active === false) {
+        const targetUser = await storage.getUser(id);
+        if (targetUser && targetUser.role === 'admin') {
+          const allUsers = await storage.listUsers();
+          const activeAdmins = allUsers.filter(u => u.role === 'admin' && u.active && u.id !== id);
+          
+          if (activeAdmins.length === 0) {
+            return res.status(400).json({ 
+              error: "Cannot deactivate the last active admin user" 
+            });
+          }
+        }
+      }
+      
+      const updatedUser = await storage.updateUser(id, validatedData);
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          id: updatedUser.id, 
+          username: updatedUser.username, 
+          role: updatedUser.role, 
+          active: updatedUser.active,
+          createdAt: updatedUser.createdAt 
+        } 
+      });
+    } catch (error: any) {
+      if (error.code === '23505') { // PostgreSQL unique constraint violation
+        res.status(400).json({ error: "Username already exists" });
+      } else {
+        res.status(400).json({ error: error.message });
+      }
+    }
+  });
+
+  app.patch("/api/admin/users/:id/password", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = adminResetPasswordSchema.parse(req.body);
+      
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(validatedData.newPassword);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          error: "Password validation failed", 
+          details: passwordValidation.errors 
+        });
+      }
+      
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(validatedData.newPassword, 10);
+      
+      // Update password
+      await storage.setUserPassword(id, hashedPassword);
+      
+      res.json({ success: true, data: { message: "Password reset successfully" } });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Distributor login (with rate limiting)
   app.post("/api/auth/distributor/login", loginRateLimit, async (req, res) => {
     try {
@@ -534,7 +759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status } = req.body;
       
       // Validate status update
-      if (!status || !["pending", "approved", "rejected"].includes(status)) {
+      if (!status || !["pending", "approved", "rejected", "standby"].includes(status)) {
         return res.status(400).json({ error: "Invalid status value" });
       }
       
@@ -579,6 +804,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: affiliate.email,
           passwordSet: true 
         } 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete affiliate (admin only)
+  app.delete("/api/admin/affiliates/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Check if affiliate exists
+      const affiliate = await storage.getAffiliate(id);
+      if (!affiliate) {
+        return res.status(404).json({ error: "Affiliate not found" });
+      }
+      
+      // Delete affiliate
+      await storage.deleteAffiliate(id);
+      
+      res.json({ 
+        success: true, 
+        message: "Affiliate deleted successfully" 
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

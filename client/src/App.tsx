@@ -11,6 +11,8 @@ import Home from "@/pages/Home";
 import Affiliates from "@/pages/Affiliates";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AdminProfile from "@/pages/AdminProfile";
+import AdminUsers from "@/pages/AdminUsers";
 import AdminAffiliates from "@/pages/AdminAffiliates";
 import AdminProducts from "@/pages/AdminProducts";
 import AdminHomepage from "@/pages/AdminHomepage";
@@ -25,6 +27,8 @@ function Router() {
       <Route path="/affiliates" component={Affiliates} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/profile" component={AdminProfile} />
+      <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/affiliates" component={AdminAffiliates} />
       <Route path="/admin/products" component={AdminProducts} />
       <Route path="/admin/homepage" component={AdminHomepage} />
