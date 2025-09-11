@@ -99,7 +99,7 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
                   key={flavor.name} 
                   value={flavor.name}
                   disabled={isOutOfStock}
-                  className={`text-white hover:bg-purple-600/20 focus:bg-purple-600/20 ${
+                  className={`text-white hover:bg-purple-600/20 hover:text-white hover:font-bold focus:bg-purple-600/20 focus:text-white focus:font-bold ${
                     isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   data-testid={`option-flavor-${product.id}-${flavor.name}`}
