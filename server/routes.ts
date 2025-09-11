@@ -280,6 +280,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Place order and deduct inventory (public)
+  app.post("/api/orders", publicRateLimit, async (req, res) => {
+    try {
+      const { cartItems, customerData } = req.body;
+      
+      if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+        return res.status(400).json({ error: "Cart items are required" });
+      }
+      
+      if (!customerData || !customerData.firstName || !customerData.phone) {
+        return res.status(400).json({ error: "Customer data is required" });
+      }
+      
+      // Process each cart item and deduct flavor inventory
+      const orderItems = [];
+      
+      for (const item of cartItems) {
+        if (!item.id || !item.flavor || !item.quantity || item.quantity <= 0) {
+          return res.status(400).json({ error: "Invalid cart item format" });
+        }
+        
+        // Get product and find the specific flavor
+        const product = await storage.getProduct(item.id);
+        if (!product) {
+          return res.status(400).json({ error: `Product not found: ${item.id}` });
+        }
+        
+        const flavors = await storage.getProductFlavors(product.id);
+        const flavor = flavors.find(f => f.name === item.flavor && f.active);
+        
+        if (!flavor) {
+          return res.status(400).json({ error: `Flavor not available: ${item.flavor}` });
+        }
+        
+        // Check if sufficient inventory is available
+        const availableInventory = Math.max(0, flavor.inventory - flavor.reservedInventory);
+        if (availableInventory < item.quantity) {
+          return res.status(400).json({ 
+            error: `Insufficient inventory for ${product.name} - ${flavor.name}. Available: ${availableInventory}, Requested: ${item.quantity}` 
+          });
+        }
+        
+        // Reserve the inventory by increasing reservedInventory
+        await storage.updateProductFlavor(flavor.id, {
+          reservedInventory: flavor.reservedInventory + item.quantity
+        });
+        
+        orderItems.push({
+          productId: product.id,
+          productName: product.name,
+          flavorId: flavor.id,
+          flavorName: flavor.name,
+          quantity: item.quantity,
+          unitPrice: parseFloat(product.price),
+          totalPrice: parseFloat(product.price) * item.quantity
+        });
+      }
+      
+      // Calculate order total
+      const orderTotal = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      
+      // Create a sale record for tracking
+      const saleData = {
+        productId: orderItems[0].productId, // Use first product as main product
+        quantity: orderItems.reduce((sum, item) => sum + item.quantity, 0),
+        unitPrice: orderTotal / orderItems.reduce((sum, item) => sum + item.quantity, 0),
+        totalAmount: orderTotal.toFixed(2),
+        customerName: `${customerData.firstName} ${customerData.lastName}`,
+        customerEmail: customerData.email || '',
+        customerPhone: customerData.phone,
+        discount: 0
+      };
+      
+      const sale = await storage.createSale(saleData);
+      
+      res.json({ 
+        success: true, 
+        data: { 
+          orderId: sale.id,
+          items: orderItems,
+          total: orderTotal,
+          message: "Order placed successfully. Inventory has been reserved."
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get homepage content (public)
   app.get("/api/homepage-content", async (req, res) => {
     try {

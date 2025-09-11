@@ -28,59 +28,91 @@ export default function CartModal() {
     setShowCheckoutForm(true)
   }
 
-  const handleFormSubmit = (customerData: CustomerData) => {
+  const handleFormSubmit = async (customerData: CustomerData) => {
     console.log('Submitted checkout form.', customerData);
     
-    // Create detailed message with customer information and products
-    const customerInfo = `*INFORMACIÓN DEL CLIENTE:*
+    try {
+      // Place order and deduct inventory
+      const orderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cartItems: cart.map(item => ({
+            id: item.id,
+            flavor: item.flavor,
+            quantity: item.quantity
+          })),
+          customerData
+        })
+      });
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        alert(`Error al procesar el pedido: ${errorData.error}`);
+        return;
+      }
+
+      const orderData = await orderResponse.json();
+      console.log('Order placed successfully:', orderData.data);
+
+      // Create detailed message with customer information and products
+      const customerInfo = `*INFORMACIÓN DEL CLIENTE:*
 Nombre: ${customerData.firstName} ${customerData.lastName}
 Teléfono: ${customerData.phone}
 Dirección: ${customerData.address}
 Departamento: ${customerData.department}
+Pedido ID: ${orderData.data.orderId}
 
 *PRODUCTOS:*`
-    
-    const productsInfo = cart.map(item => 
-      `• ${item.name} (${item.puffs})
+      
+      const productsInfo = cart.map(item => 
+        `• ${item.name} (${item.puffs})
   Sabor: ${item.flavor}
   Cantidad: ${item.quantity}
   Subtotal: Q${(parseFloat(item.price.replace('Q', '')) * item.quantity).toFixed(2)}`
-    ).join('\n\n')
+      ).join('\n\n')
 
-    const orderSummary = `
+      const orderSummary = `
 *RESUMEN DEL PEDIDO:*
 Total: Q${total.toFixed(2)}
 Envío: GRATIS
 
-¡Confirma tu pedido para proceder con la entrega!`
+¡Pedido confirmado! Inventario reservado. Procederemos con la entrega.`
 
-    const fullMessage = `¡Hola! Quiero hacer un pedido:\n\n${customerInfo}\n\n${productsInfo}${orderSummary}`
-    
-    const whatsappUrl = `https://wa.me/50242015748?text=${encodeURIComponent(fullMessage)}`
-    
-    console.log('Opening WhatsApp URL:', whatsappUrl);
-    
-    try {
-      const newWindow = window.open(whatsappUrl, '_blank');
-      console.log('Window.open result:', newWindow);
+      const fullMessage = `¡Hola! He realizado un pedido:\n\n${customerInfo}\n\n${productsInfo}${orderSummary}`
       
-      if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-        // Popup was blocked, fallback to direct navigation
-        console.warn('Popup blocked, redirecting to WhatsApp directly');
+      const whatsappUrl = `https://wa.me/50242015748?text=${encodeURIComponent(fullMessage)}`
+      
+      console.log('Opening WhatsApp URL:', whatsappUrl);
+      
+      try {
+        const newWindow = window.open(whatsappUrl, '_blank');
+        console.log('Window.open result:', newWindow);
+        
+        if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+          // Popup was blocked, fallback to direct navigation
+          console.warn('Popup blocked, redirecting to WhatsApp directly');
+          window.location.href = whatsappUrl;
+        }
+      } catch (error) {
+        console.error('Error opening WhatsApp:', error);
+        // Fallback to direct navigation
         window.location.href = whatsappUrl;
       }
+      
+      // Clear cart and close modal
+      setTimeout(() => {
+        clearCart()
+        closeCart()
+        setShowCheckoutForm(false)
+      }, 1000);
+
     } catch (error) {
-      console.error('Error opening WhatsApp:', error);
-      // Fallback to direct navigation
-      window.location.href = whatsappUrl;
+      console.error('Error placing order:', error);
+      alert('Error al procesar el pedido. Por favor intenta nuevamente.');
     }
-    
-    // Clear cart and close modal
-    setTimeout(() => {
-      clearCart()
-      closeCart()
-      setShowCheckoutForm(false)
-    }, 1000);
   }
 
   const handleBackToCart = () => {

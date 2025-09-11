@@ -1353,7 +1353,7 @@ export default function AdminProducts() {
                                 Popular
                               </Badge>
                             )}
-                            {getStockStatusBadge(product)}
+                            {getProductStockStatusBadge(product)}
                           </CardTitle>
                           <p className="text-sm text-gray-400">{product.puffs} puffs • Q{product.price}</p>
                           <div className="flex items-center gap-4 mt-1">

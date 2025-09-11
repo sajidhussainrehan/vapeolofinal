@@ -52,6 +52,7 @@ export interface IStorage {
   
   // Sales
   createSale(sale: InsertSale): Promise<Sale>;
+  getSale(id: string): Promise<Sale | undefined>;
   getSales(): Promise<Sale[]>;
   getSalesByAffiliate(affiliateId: string): Promise<Sale[]>;
   updateSaleStatus(id: string, status: string): Promise<Sale>;
@@ -264,6 +265,11 @@ export class DatabaseStorage implements IStorage {
       .values(sale)
       .returning();
     return newSale;
+  }
+
+  async getSale(id: string): Promise<Sale | undefined> {
+    const [sale] = await db.select().from(sales).where(eq(sales.id, id));
+    return sale || undefined;
   }
 
   async getSales(): Promise<Sale[]> {
