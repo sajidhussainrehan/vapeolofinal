@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ShoppingCart } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
+import { useToast } from '@/hooks/use-toast'
 import type { ProductFlavor } from '@shared/schema'
 import { isFlavorOutOfStock, getFlavorAvailableInventory } from '@shared/schema'
 
@@ -25,6 +26,7 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
   const [selectedFlavor, setSelectedFlavor] = useState<string>('')
   const { addToCart } = useCart()
   const { distributor } = useDistributor()
+  const { toast } = useToast()
 
   // Calculate the actual price (distributor price if logged in)
   const actualPrice = distributor 
@@ -47,7 +49,7 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
 
   const handleAddToCart = () => {
     if (!selectedFlavor) {
-      alert('Por favor selecciona un sabor antes de agregar al carrito')
+      toast.warning('Por favor selecciona un sabor antes de agregar al carrito')
       return
     }
 
@@ -55,7 +57,7 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
     if (product.hasFlavorInventory) {
       const selectedFlavorObj = flavorsToShow.find(f => f.name === selectedFlavor)
       if (selectedFlavorObj && isFlavorOutOfStock(selectedFlavorObj)) {
-        alert('El sabor seleccionado ya no está disponible. Por favor selecciona otro sabor.')
+        toast.error('El sabor seleccionado ya no está disponible. Por favor selecciona otro sabor.')
         setSelectedFlavor('') // Clear invalid selection
         return
       }
