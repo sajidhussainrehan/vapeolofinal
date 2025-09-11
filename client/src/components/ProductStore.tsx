@@ -24,24 +24,11 @@ const imageMapping: Record<string, string> = {
 
 // Transform database product for display
 function transformProduct(product: Product & { flavors?: ProductFlavor[] }) {
-  // For backward compatibility, use sabores if no flavors are present
-  const flavors = product.flavors && product.flavors.length > 0 
-    ? product.flavors
-    : product.sabores?.map(saborName => ({ 
-        id: `legacy-${saborName}`,
-        name: saborName, 
-        active: true, 
-        inventory: 999, 
-        reservedInventory: 0,
-        productId: product.id,
-        lowStockThreshold: 5,
-        createdAt: new Date()
-      } as ProductFlavor)) || [];
+  // Use only actual flavors from database - no legacy fallback to sabores
+  const flavors = product.flavors || [];
   
-  // Get available flavors (not out of stock) - but only filter for inventory if using new flavor system
-  const availableFlavors = product.flavors && product.flavors.length > 0
-    ? flavors.filter(flavor => flavor.active && !isFlavorOutOfStock(flavor))
-    : flavors.filter(flavor => flavor.active); // For legacy, all active flavors are available
+  // Get available flavors (active and not out of stock)
+  const availableFlavors = flavors.filter(flavor => flavor.active && !isFlavorOutOfStock(flavor));
 
   // Handle image paths - support both uploaded images and legacy static imports
   let imageSrc = '';
@@ -61,12 +48,12 @@ function transformProduct(product: Product & { flavors?: ProductFlavor[] }) {
     puffs: `${product.puffs.toLocaleString()} Puffs`, // Format number with commas
     price: `Q${Math.round(parseFloat(product.price))}`, // Add Q prefix and round
     image: imageSrc,
-    sabores: product.sabores, // Keep for backward compatibility
-    flavors: flavors, // New flavor structure with inventory
+    sabores: product.sabores, // Include sabores for FlavorSelector compatibility
+    flavors: flavors, // Actual flavors from database
     availableFlavors: availableFlavors, // Only flavors that can be selected
+    hasFlavorInventory: flavors.length > 0, // Indicates if product uses flavor-based inventory
     popular: product.popular,
     originalPrice: parseFloat(product.price), // Keep original for calculations
-    hasFlavorInventory: product.flavors && product.flavors.length > 0 // Flag to indicate if using flavor-level inventory
   };
 }
 
