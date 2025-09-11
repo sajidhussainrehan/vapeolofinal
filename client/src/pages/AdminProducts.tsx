@@ -720,6 +720,18 @@ export default function AdminProducts() {
   const FlavorDisplaySection = ({ product }: { product: Product }) => {
     const { data: flavors, isLoading: flavorsLoading } = useQuery({
       queryKey: ["/api/admin/products", product.id, "flavors"],
+      queryFn: async () => {
+        const response = await fetch(`/api/admin/products/${product.id}/flavors`, {
+          headers: {
+            Authorization: token || "",
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch flavors");
+        }
+        const result = await response.json();
+        return result.data as ProductFlavor[];
+      },
       enabled: !!product.id,
     });
 
@@ -756,7 +768,7 @@ export default function AdminProducts() {
       );
     }
 
-    const activeFlavors = flavorsList.filter((f: ProductFlavor) => f.active);
+    const activeFlavors = flavorsList.filter((f: ProductFlavor) => f.active && getFlavorAvailableInventory(f) > 0);
     const visibleFlavors = activeFlavors.slice(0, 3);
     const totalFlavors = activeFlavors.length;
 
@@ -774,9 +786,19 @@ export default function AdminProducts() {
           </Button>
         </div>
         <div className="flex flex-wrap gap-1">
-          {visibleFlavors.map((flavor: any) => (
-            <div key={flavor.id} className="flex items-center">
+          {visibleFlavors.map((flavor: ProductFlavor) => (
+            <div key={flavor.id} className="flex items-center gap-1">
+              <Badge 
+                variant="outline" 
+                className="text-xs border-gray-500 text-gray-300 bg-gray-800/50"
+                data-testid={`badge-flavor-${flavor.name.replace(/\s+/g, '-').toLowerCase()}`}
+              >
+                {flavor.name}
+              </Badge>
               {getFlavorStockStatusBadge(flavor)}
+              <span className="text-xs text-gray-400 ml-1">
+                ({getFlavorAvailableInventory(flavor)})
+              </span>
             </div>
           ))}
           {totalFlavors > 3 && (
@@ -1149,10 +1171,19 @@ export default function AdminProducts() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleOpenFlavorDialog(product)}
-                          className="text-white hover:bg-gray-700 cursor-pointer"
+                          className="text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                          data-testid={`menu-manage-flavors-${product.id}`}
                         >
                           <Settings className="mr-2 h-4 w-4" />
                           Gestionar Sabores
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleActive(product)}
+                          className="text-yellow-400 hover:bg-yellow-500/10 cursor-pointer"
+                          data-testid={`menu-toggle-active-${product.id}`}
+                        >
+                          {product.active ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                          {product.active ? "Desactivar" : "Activar"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => setDeletingProduct(product)}
@@ -1201,8 +1232,48 @@ export default function AdminProducts() {
                       <span className="text-white font-medium">{getAvailableInventory(product)}</span>
                     </div>
                     
-                    {/* Flavors summary */}
+                    {/* Enhanced Flavors summary with management options */}
                     <FlavorDisplaySection product={product} />
+                    
+                    {/* Quick flavor management actions */}
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-700">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenFlavorDialog(product)}
+                          className="text-xs border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                          data-testid={`button-manage-flavors-${product.id}`}
+                        >
+                          <Settings className="w-3 h-3 mr-1" />
+                          Sabores
+                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleActive(product)}
+                              className={`text-xs ${
+                                product.active 
+                                  ? "border-green-500/50 text-green-400 hover:bg-green-500/10" 
+                                  : "border-gray-500/50 text-gray-400 hover:bg-gray-500/10"
+                              }`}
+                              data-testid={`button-toggle-active-${product.id}`}
+                            >
+                              {product.active ? <Eye className="w-3 h-3 mr-1" /> : <EyeOff className="w-3 h-3 mr-1" />}
+                              {product.active ? "Activo" : "Inactivo"}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{product.active ? "Desactivar producto" : "Activar producto"}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Total disponible: <span className="text-white font-medium">{getProductTotalAvailable(product)}</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1460,8 +1531,24 @@ export default function AdminProducts() {
                       <Label htmlFor="flavor-active">Sabor Activo</Label>
                     </div>
 
-                    <div className="text-sm text-gray-400 bg-gray-800/50 p-3 rounded">
-                      <p><strong>Disponible:</strong> {Math.max(0, parseInt(flavorFormData.inventory || "0") - parseInt(flavorFormData.reservedInventory || "0"))} unidades</p>
+                    <div className="text-sm text-gray-400 bg-gray-800/50 p-3 rounded space-y-1">
+                      <p><strong>Disponible:</strong> <span className="text-green-400">{Math.max(0, parseInt(flavorFormData.inventory || "0") - parseInt(flavorFormData.reservedInventory || "0"))} unidades</span></p>
+                      <p><strong>Estado:</strong> 
+                        <span className={`ml-1 ${
+                          Math.max(0, parseInt(flavorFormData.inventory || "0") - parseInt(flavorFormData.reservedInventory || "0")) === 0 
+                            ? "text-red-400" 
+                            : Math.max(0, parseInt(flavorFormData.inventory || "0") - parseInt(flavorFormData.reservedInventory || "0")) <= parseInt(flavorFormData.lowStockThreshold || "5")
+                            ? "text-yellow-400"
+                            : "text-green-400"
+                        }`}>
+                          {Math.max(0, parseInt(flavorFormData.inventory || "0") - parseInt(flavorFormData.reservedInventory || "0")) === 0 
+                            ? "Sin Stock" 
+                            : Math.max(0, parseInt(flavorFormData.inventory || "0") - parseInt(flavorFormData.reservedInventory || "0")) <= parseInt(flavorFormData.lowStockThreshold || "5")
+                            ? "Stock Bajo"
+                            : "En Stock"
+                          }
+                        </span>
+                      </p>
                     </div>
 
                     <div className="flex gap-3">
@@ -1615,239 +1702,6 @@ export default function AdminProducts() {
             </AlertDialogContent>
           </AlertDialog>
 
-      {/* Flavor Management Dialog */}
-      <Dialog open={flavorDialogOpen} onOpenChange={setFlavorDialogOpen}>
-        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Gestionar Sabores - {currentProductForFlavors?.name}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-white">
-              {editingFlavor ? "Editar Sabor" : "Agregar Nuevo Sabor"}
-            </h3>
-            
-            <form onSubmit={handleFlavorSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="flavor-name">Nombre del Sabor</Label>
-                <Input
-                  id="flavor-name"
-                  value={flavorFormData.name}
-                  onChange={(e) => setFlavorFormData(prev => ({ ...prev, name: e.target.value }))}
-                  required
-                  placeholder="Ej: Fresa, Menta, etc."
-                  className={`bg-gray-800 border-gray-700 ${flavorFormErrors.name ? 'border-red-500' : ''}`}
-                  data-testid="input-flavor-name"
-                />
-                {flavorFormErrors.name && (
-                  <p className="text-red-400 text-sm mt-1">{flavorFormErrors.name}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label htmlFor="flavor-inventory">Inventario Total</Label>
-                  <Input
-                    id="flavor-inventory"
-                    type="number"
-                    min="0"
-                    value={flavorFormData.inventory}
-                    onChange={(e) => setFlavorFormData(prev => ({ ...prev, inventory: e.target.value }))}
-                    className={`bg-gray-800 border-gray-700 ${flavorFormErrors.inventory ? 'border-red-500' : ''}`}
-                    data-testid="input-flavor-inventory"
-                  />
-                  {flavorFormErrors.inventory && (
-                    <p className="text-red-400 text-sm mt-1">{flavorFormErrors.inventory}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="flavor-reserved">Inventario Reservado</Label>
-                  <Input
-                    id="flavor-reserved"
-                    type="number"
-                    min="0"
-                    value={flavorFormData.reservedInventory}
-                    onChange={(e) => setFlavorFormData(prev => ({ ...prev, reservedInventory: e.target.value }))}
-                    className={`bg-gray-800 border-gray-700 ${flavorFormErrors.reservedInventory ? 'border-red-500' : ''}`}
-                    data-testid="input-flavor-reserved"
-                  />
-                  {flavorFormErrors.reservedInventory && (
-                    <p className="text-red-400 text-sm mt-1">{flavorFormErrors.reservedInventory}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="flavor-threshold">Umbral Bajo Stock</Label>
-                  <Input
-                    id="flavor-threshold"
-                    type="number"
-                    min="0"
-                    value={flavorFormData.lowStockThreshold}
-                    onChange={(e) => setFlavorFormData(prev => ({ ...prev, lowStockThreshold: e.target.value }))}
-                    className={`bg-gray-800 border-gray-700 ${flavorFormErrors.lowStockThreshold ? 'border-red-500' : ''}`}
-                    data-testid="input-flavor-threshold"
-                  />
-                  {flavorFormErrors.lowStockThreshold && (
-                    <p className="text-red-400 text-sm mt-1">{flavorFormErrors.lowStockThreshold}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="flavor-active"
-                  checked={flavorFormData.active}
-                  onCheckedChange={(checked) => setFlavorFormData(prev => ({ ...prev, active: checked }))}
-                  data-testid="switch-flavor-active"
-                />
-                <Label htmlFor="flavor-active">Sabor activo</Label>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="submit"
-                  disabled={createFlavorMutation.isPending || updateFlavorMutation.isPending}
-                  className="bg-purple-600 hover:bg-purple-700"
-                  data-testid="button-submit-flavor"
-                >
-                  {createFlavorMutation.isPending || updateFlavorMutation.isPending ? "Guardando..." : ""}
-                  {editingFlavor ? "Actualizar" : "Crear"} Sabor
-                </Button>
-                {editingFlavor && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={resetFlavorForm}
-                    className="border-gray-700 text-gray-300"
-                    data-testid="button-cancel-edit-flavor"
-                  >
-                    Cancelar
-                  </Button>
-                )}
-              </div>
-            </form>
-
-            {/* Existing Flavors List */}
-            <div className="space-y-3">
-              <h4 className="text-md font-medium text-white">Sabores Existentes</h4>
-              {flavorsLoading ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => (
-                    <Card key={i} className="bg-gray-800">
-                      <CardContent className="p-3">
-                        <Skeleton className="h-4 w-1/3 bg-gray-700 mb-2" />
-                        <Skeleton className="h-3 w-1/2 bg-gray-700" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : productFlavors && productFlavors.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                  {productFlavors.map((flavor) => (
-                    <Card key={flavor.id} className="bg-gray-800 border-gray-700">
-                      <CardContent className="p-3">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h5 className="font-medium text-white">{flavor.name}</h5>
-                              {!flavor.active && (
-                                <Badge variant="secondary" className="bg-red-500/10 text-red-400 text-xs">
-                                  Inactivo
-                                </Badge>
-                              )}
-                              {getFlavorStockStatus(flavor) === 'out_of_stock' && (
-                                <Badge variant="secondary" className="bg-red-500/10 text-red-400 text-xs">
-                                  Sin Stock
-                                </Badge>
-                              )}
-                              {getFlavorStockStatus(flavor) === 'low_stock' && (
-                                <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-400 text-xs">
-                                  Poco Stock
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-400 mt-1">
-                              <div>Disponible: {getFlavorAvailableInventory(flavor)}</div>
-                              <div>Total: {flavor.inventory} | Reservado: {flavor.reservedInventory}</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                setEditingFlavor(flavor);
-                                setFlavorFormData({
-                                  name: flavor.name,
-                                  inventory: flavor.inventory.toString(),
-                                  reservedInventory: flavor.reservedInventory.toString(),
-                                  lowStockThreshold: flavor.lowStockThreshold.toString(),
-                                  active: flavor.active
-                                });
-                              }}
-                              data-testid={`button-edit-flavor-${flavor.id}`}
-                            >
-                              <Edit2 className="h-3 w-3 text-blue-400" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => setDeletingFlavor(flavor)}
-                              data-testid={`button-delete-flavor-${flavor.id}`}
-                            >
-                              <Trash2 className="h-3 w-3 text-red-400" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-400">
-                  <p>No hay sabores registrados para este producto</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Flavor Confirmation Dialog */}
-      <AlertDialog open={!!deletingFlavor} onOpenChange={() => setDeletingFlavor(null)}>
-        <AlertDialogContent className="bg-gray-900 border-red-500/20 text-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-400">¿Eliminar Sabor?</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              ¿Estás seguro de que deseas eliminar el sabor "{deletingFlavor?.name}"? 
-              Esta acción no se puede deshacer y se perderán todos los datos de inventario asociados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              onClick={() => setDeletingFlavor(null)}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
-              data-testid="button-cancel-delete-flavor"
-            >
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteFlavor}
-              disabled={deleteFlavorMutation.isPending}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              data-testid="button-confirm-delete-flavor"
-            >
-              {deleteFlavorMutation.isPending ? "Eliminando..." : "Eliminar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Delete Product Confirmation Dialog */}
       <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
