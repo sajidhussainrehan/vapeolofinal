@@ -104,9 +104,11 @@ export default function FlavorSelector({ product }: FlavorSelectorProps) {
                 >
                   <div className="flex justify-between items-center w-full">
                     <span>{flavor.name}</span>
-                    {product.hasFlavorInventory && availableStock !== null && (
-                      <span className="text-xs ml-2 text-gray-400">
-                        {isOutOfStock ? 'Agotado' : `${availableStock} disponibles`}
+                    {product.hasFlavorInventory && (
+                      <span className={`text-xs ml-2 ${
+                        isOutOfStock ? 'text-red-400' : 'text-green-400'
+                      }`}>
+                        {isOutOfStock ? 'Agotado' : 'Disponible'}
                       </span>
                     )}
                   </div>
