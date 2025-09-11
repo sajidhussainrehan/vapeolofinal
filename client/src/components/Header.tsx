@@ -4,6 +4,7 @@ import { Menu, ShoppingCart, User, X } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useDistributor } from '@/contexts/DistributorContext'
 import { useLocation } from 'wouter'
+import vapeologyLogo from '@assets/VAPEOLO LOGO PNG_1757560375792.png'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -17,9 +18,12 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent font-mono">
-              VAPEOLO
-            </div>
+            <img 
+              src={vapeologyLogo} 
+              alt="VAPEOLO" 
+              className="h-8 w-auto"
+              data-testid="img-vapeolo-logo"
+            />
           </div>
 
           {/* Desktop Navigation */}
