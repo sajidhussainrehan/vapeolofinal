@@ -108,7 +108,7 @@ export default function Header() {
               const urlMap: Record<string, string> = {
                 inicio: '#inicio',
                 productos: '#productos', 
-                afiliados: '#afiliados',
+                afiliados: '/affiliates',
                 contacto: '#contacto'
               };
               return (
@@ -174,7 +174,7 @@ export default function Header() {
                 const urlMap: Record<string, string> = {
                   inicio: '#inicio',
                   productos: '#productos', 
-                  afiliados: '#afiliados',
+                  afiliados: '/affiliates',
                   contacto: '#contacto'
                 };
                 return (
