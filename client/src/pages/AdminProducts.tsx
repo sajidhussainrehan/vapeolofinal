@@ -1429,10 +1429,6 @@ export default function AdminProducts() {
                       <span className="text-sm text-gray-400">Precio:</span>
                       <span className="text-white font-medium">Q{parseFloat(product.price).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-400">Stock Total:</span>
-                      <span className="text-white font-medium">{getAvailableInventory(product)}</span>
-                    </div>
                     
                     {/* Enhanced Flavors summary with management options */}
                     <FlavorDisplaySection product={product} />
