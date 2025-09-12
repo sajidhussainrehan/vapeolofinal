@@ -70,57 +70,51 @@ export default function Footer() {
               {footerData.brandDescription}
             </p>
             
-            {/* Social Links - DYNAMIC FROM DATABASE */}
+            {/* Social Links - Static for now */}
             <div className="flex space-x-4">
-              {footerData.socialLinks.instagram && (
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/10"
-                  data-testid="button-social-instagram"
-                  onClick={() => window.open(footerData.socialLinks.instagram, '_blank')}
-                >
-                  <Instagram className="h-4 w-4" />
-                </Button>
-              )}
-              {footerData.socialLinks.facebook && (
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="border-blue-500/30 hover:border-blue-400 hover:bg-blue-500/10"
-                  data-testid="button-social-facebook"
-                  onClick={() => window.open(footerData.socialLinks.facebook, '_blank')}
-                >
-                  <Facebook className="h-4 w-4" />
-                </Button>
-              )}
-              {footerData.socialLinks.tiktok && (
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  className="border-green-500/30 hover:border-green-400 hover:bg-green-500/10"
-                  data-testid="button-social-tiktok"
-                  onClick={() => window.open(footerData.socialLinks.tiktok, '_blank')}
-                >
-                  <MessageCircle className="h-4 w-4" />
-                </Button>
-              )}
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/10"
+                data-testid="button-social-instagram"
+                onClick={() => window.open('https://www.instagram.com/vapeolo', '_blank')}
+              >
+                <Instagram className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="border-blue-500/30 hover:border-blue-400 hover:bg-blue-500/10"
+                data-testid="button-social-facebook"
+                onClick={() => window.open('https://www.facebook.com/vapeolo', '_blank')}
+              >
+                <Facebook className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="border-green-500/30 hover:border-green-400 hover:bg-green-500/10"
+                data-testid="button-social-whatsapp"
+                onClick={() => window.open('https://wa.me/50212345678', '_blank')}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
           {/* Dynamic Columns - COMPLETELY FROM DATABASE */}
-          {footerData.columns.map((column, columnIdx) => (
-            <div key={columnIdx}>
+          {Object.entries(footerData.columns).map(([key, column], columnIdx) => (
+            <div key={key}>
               <h3 className="text-white font-bold text-lg mb-4">{column.title}</h3>
               <ul className="space-y-3">
                 {column.links.map((link, linkIdx) => (
                   <li key={linkIdx}>
                     <a 
-                      href={link.url}
+                      href={link.href}
                       className="text-gray-400 hover:text-purple-400 transition-colors text-sm"
                       data-testid={`link-column-${columnIdx}-${linkIdx}`}
                     >
-                      {link.label}
+                      {link.name}
                     </a>
                   </li>
                 ))}
@@ -141,11 +135,11 @@ export default function Footer() {
               {footerData.legalLinks.map((link, idx) => (
                 <a 
                   key={idx} 
-                  href={link.url} 
+                  href={link.href} 
                   className="text-gray-400 hover:text-purple-400 transition-colors"
                   data-testid={`link-legal-${idx}`}
                 >
-                  {link.label}
+                  {link.name}
                 </a>
               ))}
             </div>
@@ -154,7 +148,7 @@ export default function Footer() {
           {/* Additional Info - DYNAMIC AGE NOTICE */}
           <div className="mt-6 pt-6 border-t border-purple-500/10 text-center">
             <p className="text-gray-500 text-xs">
-              {footerData.ageNotice}
+              {footerData.ageWarning}
             </p>
           </div>
         </div>
