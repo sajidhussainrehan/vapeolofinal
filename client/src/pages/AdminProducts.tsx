@@ -109,6 +109,25 @@ export default function AdminProducts() {
     enabled: !!currentProductForFlavors?.id,
   });
 
+  // Query for flavors when editing a product in the form (for automatic inventory calculation)
+  const { data: editingProductFlavors } = useQuery({
+    queryKey: ["/api/admin/products", editingProduct?.id, "flavors"],
+    queryFn: async () => {
+      if (!editingProduct?.id) return [];
+      const response = await fetch(`/api/admin/products/${editingProduct.id}/flavors`, {
+        headers: {
+          Authorization: token || "",
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch flavors");
+      }
+      const result = await response.json();
+      return result.data as ProductFlavor[];
+    },
+    enabled: !!editingProduct?.id,
+  });
+
   // Flavor mutations
   const createFlavorMutation = useMutation({
     mutationFn: async ({ productId, flavorData }: { productId: string; flavorData: any }) => {
@@ -228,6 +247,24 @@ export default function AdminProducts() {
       setIsBulkUpdating(false);
     },
   });
+
+  // Function to calculate total inventory from active flavors
+  const calculateTotalInventory = (product?: Product | null, flavors?: ProductFlavor[]) => {
+    if (!product) return 0;
+    
+    // If product has flavors, calculate sum of active flavors' inventory
+    if (flavors && flavors.length > 0) {
+      return flavors
+        .filter(f => f.active)
+        .reduce((sum, flavor) => sum + flavor.inventory, 0);
+    }
+    
+    // Fallback to product inventory for backward compatibility (products without flavors)
+    return product.inventory || 0;
+  };
+
+  // Calculate current total inventory for the editing product
+  const currentTotalInventory = calculateTotalInventory(editingProduct, editingProductFlavors);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -458,11 +495,15 @@ export default function AdminProducts() {
   const validateForm = () => {
     const errors: {[key: string]: string} = {};
     
-    const inventory = parseInt(formData.inventory) || 0;
+    // Determine if this product has flavors to use the correct inventory value
+    const hasFlavors = editingProduct && (editingProductFlavors?.length || 0) > 0;
+    const effectiveInventory = hasFlavors ? currentTotalInventory : (parseInt(formData.inventory) || 0);
+    
     const reservedInventory = parseInt(formData.reservedInventory) || 0;
     const lowStockThreshold = parseInt(formData.lowStockThreshold) || 0;
     
-    if (inventory < 0) {
+    // Only validate manual inventory input if product doesn't have flavors
+    if (!hasFlavors && effectiveInventory < 0) {
       errors.inventory = "El inventario no puede ser negativo";
     }
     
@@ -470,7 +511,8 @@ export default function AdminProducts() {
       errors.reservedInventory = "El inventario reservado no puede ser negativo";
     }
     
-    if (reservedInventory > inventory) {
+    // Use effective inventory (calculated from flavors or manual input)
+    if (reservedInventory > effectiveInventory) {
       errors.reservedInventory = "El inventario reservado no puede ser mayor al inventario total";
     }
     
@@ -507,6 +549,9 @@ export default function AdminProducts() {
       .map(s => s.trim())
       .filter(s => s.length > 0);
     
+    // Only use calculated inventory when product has flavors, otherwise use manual input
+    const hasActiveFlavors = editingProduct && (editingProductFlavors?.length || 0) > 0;
+    
     const productData = {
       name: formData.name,
       puffs: parseInt(formData.puffs),
@@ -516,7 +561,7 @@ export default function AdminProducts() {
       description: formData.description || undefined,
       popular: formData.popular,
       active: formData.active,
-      inventory: parseInt(formData.inventory) || 0,
+      inventory: hasActiveFlavors ? currentTotalInventory : (parseInt(formData.inventory) || 0),
       reservedInventory: parseInt(formData.reservedInventory) || 0,
       lowStockThreshold: parseInt(formData.lowStockThreshold) || 10,
     };
@@ -1127,16 +1172,45 @@ export default function AdminProducts() {
                   
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="inventory">Inventario Total</Label>
+                      <Label htmlFor="inventory">
+                        Inventario Total
+                        <Tooltip>
+                          <TooltipTrigger className="ml-1">
+                            <Info className="w-3 h-3 text-gray-400 inline" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">
+                              {(editingProduct && (editingProductFlavors?.length || 0) > 0)
+                                ? "Calculado automáticamente como la suma del inventario de todos los sabores activos"
+                                : "Cantidad total de unidades disponibles para la venta"
+                              }
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </Label>
                       <Input
                         id="inventory"
                         type="number"
-                        min="0"
-                        value={formData.inventory}
-                        onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.value }))}
-                        className={`bg-gray-800 border-gray-700 ${formErrors.inventory ? 'border-red-500' : ''}`}
+                        value={editingProduct && (editingProductFlavors?.length || 0) > 0 ? currentTotalInventory.toString() : formData.inventory}
+                        readOnly={!!editingProduct && (editingProductFlavors?.length || 0) > 0}
+                        onChange={(!editingProduct || (editingProductFlavors?.length || 0) === 0) ? (e) => setFormData(prev => ({ ...prev, inventory: e.target.value })) : undefined}
+                        className={`bg-gray-800 border-gray-700 ${(editingProduct && (editingProductFlavors?.length || 0) > 0) ? 'cursor-not-allowed opacity-70' : ''} ${formErrors.inventory ? 'border-red-500' : ''}`}
                         data-testid="input-product-inventory"
+                        placeholder={(editingProduct && (editingProductFlavors?.length || 0) > 0) ? "Calculado automáticamente" : "0"}
                       />
+                      {(editingProduct && (editingProductFlavors?.length || 0) > 0) && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Suma automática de inventarios de sabores activos
+                        </p>
+                      )}
+                      {(!editingProduct || (editingProductFlavors?.length || 0) === 0) && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {!editingProduct 
+                            ? "Para productos nuevos. Será calculado automáticamente al agregar sabores."
+                            : "Producto sin sabores - inventario editable manualmente."
+                          }
+                        </p>
+                      )}
                       {formErrors.inventory && (
                         <p className="text-red-400 text-sm mt-1">{formErrors.inventory}</p>
                       )}
@@ -1176,8 +1250,16 @@ export default function AdminProducts() {
                   </div>
                   
                   <div className="text-sm text-gray-400 bg-gray-800/50 p-3 rounded">
-                    <p><strong>Disponible:</strong> {Math.max(0, parseInt(formData.inventory) - parseInt(formData.reservedInventory))} unidades</p>
-                    <p className="text-xs mt-1">Stock disponible = Inventario total - Inventario reservado</p>
+                    <p><strong>Disponible:</strong> {Math.max(0, 
+                      ((editingProduct && (editingProductFlavors?.length || 0) > 0) ? currentTotalInventory : parseInt(formData.inventory) || 0) - 
+                      parseInt(formData.reservedInventory)
+                    )} unidades</p>
+                    <p className="text-xs mt-1">
+                      {editingProduct 
+                        ? "Stock disponible = Suma de inventarios de sabores activos - Inventario reservado"
+                        : "Stock disponible = Inventario total - Inventario reservado"
+                      }
+                    </p>
                   </div>
                 </div>
 
